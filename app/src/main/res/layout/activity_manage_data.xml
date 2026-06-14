@@ -5,6 +5,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_margin="@dimen/global_margin"
     android:layout_gravity="center">
+
     <Button
         android:id="@+id/manage_space_uninstall_game"
         android:layout_width="match_parent"
@@ -40,5 +41,42 @@
         android:layout_marginTop="@dimen/global_margin"
         android:text="@string/manage_data_share_log_file"
         app:layout_constraintTop_toBottomOf="@id/manage_space_uninstall_everything"/>
+
+    <!-- Mouse Sensitivity Section -->
+    <TextView
+        android:id="@+id/label_sensitivity"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/global_margin"
+        android:text="Mouse Sensitivity"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toBottomOf="@id/manage_space_open_data_directory"/>
+
+    <LinearLayout
+        android:id="@+id/sensitivity_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        app:layout_constraintTop_toBottomOf="@id/label_sensitivity">
+
+        <SeekBar
+            android:id="@+id/seekbar_sensitivity"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:max="200"/>
+
+        <TextView
+            android:id="@+id/label_sensitivity_value"
+            android:layout_width="48dp"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:text="1.0x"/>
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
