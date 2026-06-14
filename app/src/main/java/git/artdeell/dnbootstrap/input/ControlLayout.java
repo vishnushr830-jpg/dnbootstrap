@@ -1,6 +1,7 @@
 package git.artdeell.dnbootstrap.input;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -24,6 +25,10 @@ public class ControlLayout extends LoadableButtonLayout implements GrabListener 
     private final HashMap<Integer, HitTarget> lastHitTargets = new HashMap<>();
     private final Set<HitTarget> allHitTargets = new HashSet<>();
     private final HitTarget defaultHitTarget = new HitTarget(new DefaultConsumer());
+
+    public static final String PREFS_NAME = "AppSettings";
+    public static final String KEY_SENSITIVITY = "mouse_sensitivity";
+    public static final float DEFAULT_SENSITIVITY = 1.0f;
 
     public ControlLayout(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
@@ -95,12 +100,11 @@ public class ControlLayout extends LoadableButtonLayout implements GrabListener 
         float x = event.getX(pointer), y = event.getY(pointer);
 
         if(action == MotionEvent.ACTION_MOVE) {
-            // If the current pointer is taken over by a sticky view, just update its position
-            // and leave
             if(lastHit != null && lastHit.consumer.getInputConfiguration().sticky) {
                 lastHit.onTouchPosition(pointerId, x - lastHit.consumer.getLeft(), y - lastHit.consumer.getTop());
                 return;
             }
+            // Stay locked to the original hit target — never transfer to another view on move.
             if(lastHit != null) {
                 lastHit.onTouchPosition(pointerId, x - lastHit.consumer.getLeft(), y - lastHit.consumer.getTop());
             }
@@ -170,7 +174,7 @@ public class ControlLayout extends LoadableButtonLayout implements GrabListener 
 
     private class HitTarget {
         public final @NonNull LayoutTouchConsumer consumer;
-        private int firstTouchedPointer;
+        private int firstTouchedPointer = -1;
         private boolean lastState;
 
         private HitTarget(@NonNull LayoutTouchConsumer consumer) {
@@ -218,10 +222,14 @@ public class ControlLayout extends LoadableButtonLayout implements GrabListener 
                 deltaReady = true;
                 return;
             }
+            // Read sensitivity from SharedPreferences
+            SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            float sensitivity = prefs.getFloat(KEY_SENSITIVITY, DEFAULT_SENSITIVITY);
+
             float deltaX = x - lastX;
             float deltaY = y - lastY;
-            GLFW.cursorX += deltaX / getWidth();
-            GLFW.cursorY += deltaY / getHeight();
+            GLFW.cursorX += (deltaX / getWidth()) * sensitivity;
+            GLFW.cursorY += (deltaY / getHeight()) * sensitivity;
             GLFW.sendMousePos();
             lastX = x;
             lastY = y;
@@ -231,14 +239,10 @@ public class ControlLayout extends LoadableButtonLayout implements GrabListener 
         public void setVisibility(int visibility) {}
 
         @Override
-        public int getLeft() {
-            return 0;
-        }
+        public int getLeft() { return 0; }
 
         @Override
-        public int getTop() {
-            return 0;
-        }
+        public int getTop() { return 0; }
 
         @NonNull
         @Override
