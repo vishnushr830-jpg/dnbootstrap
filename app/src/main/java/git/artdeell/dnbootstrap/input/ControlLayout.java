@@ -104,8 +104,12 @@ public class ControlLayout extends LoadableButtonLayout implements GrabListener 
             HitTarget newHit = hitTest((int)x, (int)y);
 
             if(lastHit != newHit) {
-                if(lastHit != null) lastHit.onTouchState(pointerId,false);
-                if(newHit != null) newHit.onTouchState(pointerId, true);
+                if(lastHit != null) lastHit.onTouchState(pointerId, false);
+                // Only press a new button if the finger started on the cursor zone (defaultHitTarget).
+                // If the finger started on a button and slides onto another, don't activate the new one.
+                if(newHit != null && lastHit == defaultHitTarget) {
+                    newHit.onTouchState(pointerId, true);
+                }
             }
             if(newHit != null) newHit.onTouchPosition(pointerId, x, y);
             lastHitTargets.put(pointerId, newHit);
