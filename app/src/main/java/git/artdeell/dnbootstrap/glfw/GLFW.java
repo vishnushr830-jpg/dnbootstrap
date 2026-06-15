@@ -88,4 +88,5 @@ public class GLFW {
     public static native void sendRawKeyEvent(int androidCode, int state, int mods);
     public static native void sendMouseEvent(int glfwMouseKey, int state, int mods);
     public static native void sendBulkUnicodeEvent(String input, int mods);
+    public static native void sendScrollEvent(double xOffset, double yOffset);
 }
