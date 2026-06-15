@@ -4,6 +4,7 @@ import static android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.hardware.usb.UsbManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.InputDevice;
@@ -11,9 +12,10 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.PointerIcon;
-import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.SurfaceView;
+import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.RequiresApi;
 
@@ -41,7 +43,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     private TouchCharInput touchCharInput;
     private ControlLayout controlLayout;
     private View layoutEditor;
-    private View rootView;
 
     private static boolean isRunning = false;
     private float lastMouseX = -1, lastMouseY = -1;
@@ -54,66 +55,62 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         SurfaceView surfaceView = findViewById(R.id.surface_view);
         touchCharInput = findViewById(R.id.touch_char_input);
         controlLayout = findViewById(R.id.control_layout);
-        rootView = findViewById(android.R.id.content);
         InsetUtils.setInsetsMode(this, true, false);
         surfaceView.getHolder().addCallback(new NativeSurfaceListener());
 
-        // Hide the system mouse cursor
-        hideSystemCursor();
+        // Hide system mouse cursor
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            getWindow().getDecorView().setPointerIcon(
+                PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerOnBackInvoked();
         }
-        if(!isRunning) {
+        if (!isRunning) {
             isRunning = true;
             new Thread(this::kickstart).start();
         }
     }
 
-    // ─── Hide system mouse cursor ─────────────────────────────────────────────
-
-    private void hideSystemCursor() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            View decorView = getWindow().getDecorView();
-            decorView.setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
-        }
-    }
-
-    // ─── Physical Keyboard ────────────────────────────────────────────────────
-
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (isPhysicalKeyboard(event)) {
-            // Consume the event fully — prevents Android from showing GBoard
-            GLFW.sendRawKeyEvent(keyCode, KeyCodes.GLFW_PRESS, getGLFWMods(event));
-            return true;
-        }
-        return super.onKeyDown(keyCode, event);
-    }
-
-    @Override
-    public boolean onKeyUp(int keyCode, KeyEvent event) {
-        if (isPhysicalKeyboard(event)) {
-            GLFW.sendRawKeyEvent(keyCode, KeyCodes.GLFW_RELEASE, getGLFWMods(event));
-            return true;
-        }
-        return super.onKeyUp(keyCode, event);
-    }
+    // ─── Intercept ALL key events before any view sees them ──────────────────
+    // This is the earliest possible intercept point — stops GBoard and
+    // TouchCharInput from ever receiving physical keyboard events.
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        // Intercept ALL physical keyboard events before any view sees them
-        // This stops GBoard from popping up on WASD etc.
         if (isPhysicalKeyboard(event)) {
             int action = event.getAction();
-            if (action == KeyEvent.ACTION_DOWN) {
-                GLFW.sendRawKeyEvent(event.getKeyCode(), KeyCodes.GLFW_PRESS, getGLFWMods(event));
-            } else if (action == KeyEvent.ACTION_UP) {
-                GLFW.sendRawKeyEvent(event.getKeyCode(), KeyCodes.GLFW_RELEASE, getGLFWMods(event));
+            int keyCode = event.getKeyCode();
+
+            // Let volume keys pass through to Android
+            if (keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
+                keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                return super.dispatchKeyEvent(event);
             }
-            return true; // consume — GBoard never sees it
+
+            if (action == KeyEvent.ACTION_DOWN) {
+                // Handle repeat presses (holding a key)
+                int state = event.getRepeatCount() > 0 ? 2 : KeyCodes.GLFW_PRESS; // 2 = GLFW_REPEAT
+                GLFW.sendRawKeyEvent(keyCode, state, getGLFWMods(event));
+            } else if (action == KeyEvent.ACTION_UP) {
+                GLFW.sendRawKeyEvent(keyCode, KeyCodes.GLFW_RELEASE, getGLFWMods(event));
+            }
+
+            // Dismiss any soft keyboard that may be visible
+            hideSoftKeyboard();
+
+            return true; // Consume — nothing else sees this event
         }
         return super.dispatchKeyEvent(event);
+    }
+
+    private void hideSoftKeyboard() {
+        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        View focus = getCurrentFocus();
+        if (focus != null) {
+            imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
+        }
     }
 
     // ─── Physical Mouse ───────────────────────────────────────────────────────
@@ -130,6 +127,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             float y = event.getY();
 
             if (GLFW.isGrabbing()) {
+                // In-game: relative movement
                 float dx = event.getAxisValue(MotionEvent.AXIS_RELATIVE_X);
                 float dy = event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y);
                 if (dx == 0 && dy == 0 && lastMouseX >= 0) {
@@ -144,6 +142,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                     GLFW.sendMousePos();
                 }
             } else {
+                // In menu: absolute position
                 int w = controlLayout.getWidth();
                 int h = controlLayout.getHeight();
                 if (w > 0 && h > 0) {
@@ -163,9 +162,9 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             int state = (action == MotionEvent.ACTION_BUTTON_PRESS) ? KeyCodes.GLFW_PRESS : KeyCodes.GLFW_RELEASE;
             int androidButton = event.getActionButton();
             int glfwButton = -1;
-            if (androidButton == MotionEvent.BUTTON_PRIMARY)        glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_LEFT;
-            else if (androidButton == MotionEvent.BUTTON_SECONDARY) glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_RIGHT;
-            else if (androidButton == MotionEvent.BUTTON_TERTIARY)  glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_MIDDLE;
+            if (androidButton == MotionEvent.BUTTON_PRIMARY)             glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_LEFT;
+            else if (androidButton == MotionEvent.BUTTON_SECONDARY)      glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_RIGHT;
+            else if (androidButton == MotionEvent.BUTTON_TERTIARY)       glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_MIDDLE;
             if (glfwButton >= 0) {
                 GLFW.sendMouseEvent(glfwButton, state, 0);
                 return true;
@@ -189,7 +188,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         InputDevice device = InputDevice.getDevice(event.getDeviceId());
         if (device == null) return false;
         int sources = device.getSources();
-        // Must be a keyboard but NOT a touchscreen (rules out on-screen keyboard)
+        // Physical keyboard: has keyboard source but NOT touchscreen
         return (sources & InputDevice.SOURCE_KEYBOARD) != 0
             && (sources & InputDevice.SOURCE_TOUCHSCREEN) == 0;
     }
@@ -201,10 +200,10 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     private int getGLFWMods(KeyEvent event) {
         int mods = 0;
-        if (event.isShiftPressed()) mods |= 0x0001;
-        if (event.isCtrlPressed())  mods |= 0x0002;
-        if (event.isAltPressed())   mods |= 0x0004;
-        if (event.isMetaPressed())  mods |= 0x0008;
+        if (event.isShiftPressed()) mods |= 0x0001; // GLFW_MOD_SHIFT
+        if (event.isCtrlPressed())  mods |= 0x0002; // GLFW_MOD_CONTROL
+        if (event.isAltPressed())   mods |= 0x0004; // GLFW_MOD_ALT
+        if (event.isMetaPressed())  mods |= 0x0008; // GLFW_MOD_SUPER
         return mods;
     }
 
@@ -232,7 +231,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     @Override
     public void exitLayoutEditor() {
-        if(layoutEditor == null) return;
+        if (layoutEditor == null) return;
         ViewGroup editorParent = (ViewGroup) layoutEditor.getParent();
         editorParent.removeView(layoutEditor);
         editorParent.addView(controlLayout);
@@ -243,7 +242,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     public void kickstart() {
         try {
             DotnetStarter.kickstart(new AppDirs(getFilesDir()), new File(getApplicationInfo().nativeLibraryDir));
-        }catch (Throwable t) {
+        } catch (Throwable t) {
             Utils.showErrorDialog(this, t, true);
         }
     }
