@@ -25,6 +25,7 @@ import java.io.File;
 
 import git.artdeell.dnbootstrap.assets.AppDirs;
 import git.artdeell.dnbootstrap.glfw.GLFW;
+import git.artdeell.dnbootstrap.glfw.GrabListener;
 import git.artdeell.dnbootstrap.glfw.KeyCodes;
 import git.artdeell.dnbootstrap.glfw.MouseCodes;
 import git.artdeell.dnbootstrap.input.ControlLayout;
@@ -35,7 +36,7 @@ import git.artdeell.dnbootstrap.input.editor.LayoutEditorHost;
 import git.artdeell.dnbootstrap.utils.InsetUtils;
 import git.artdeell.dnbootstrap.utils.Utils;
 
-public class MainActivity extends Activity implements SoftInputCallback, LayoutEditorHost {
+public class MainActivity extends Activity implements SoftInputCallback, LayoutEditorHost, GrabListener {
     static {
         System.loadLibrary("glfw");
         GLFW.initialize();
@@ -64,6 +65,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         surfaceView.setFocusable(true);
         surfaceView.setFocusableInTouchMode(true);
         surfaceView.requestFocus();
+        GLFW.addGrabListener(this);
 
         restoreImmersiveMode();
 
@@ -301,8 +303,43 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         return super.onGenericMotionEvent(event);
     }
 
+    @Override
+    public boolean onCapturedPointerEvent(MotionEvent event) {
+        if (handleMouseEvent(event)) {
+            return true;
+        }
+        return super.onCapturedPointerEvent(event);
+    }
+
+    @Override
+    public void onGrabState(boolean isGrabbing) {
+        runOnUiThread(() -> {
+            if (isGrabbing) {
+                requestPointerCaptureIfSupported();
+            } else {
+                releasePointerCaptureIfSupported();
+            }
+            restoreImmersiveMode();
+        });
+    }
+
+    private void requestPointerCaptureIfSupported() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !surfaceView.hasPointerCapture()) {
+            surfaceView.requestPointerCapture();
+        }
+    }
+
+    private void releasePointerCaptureIfSupported() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && surfaceView.hasPointerCapture()) {
+            surfaceView.releasePointerCapture();
+        }
+    }
+
     private boolean handleMouseEvent(MotionEvent event) {
         restoreImmersiveMode();
+        if (GLFW.isGrabbing()) {
+            requestPointerCaptureIfSupported();
+        }
         int action = event.getActionMasked();
 
         if (action == MotionEvent.ACTION_HOVER_MOVE || action == MotionEvent.ACTION_MOVE) {
