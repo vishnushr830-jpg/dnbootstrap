@@ -7,6 +7,7 @@ import android.app.Activity;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.InputDevice;
+import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -42,6 +43,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     private TouchCharInput touchCharInput;
     private ControlLayout controlLayout;
     private View layoutEditor;
+    private SurfaceView surfaceView;
 
     private static boolean isRunning = false;
     private float lastMouseX = -1, lastMouseY = -1;
@@ -51,11 +53,14 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        SurfaceView surfaceView = findViewById(R.id.surface_view);
+        surfaceView = findViewById(R.id.surface_view);
         touchCharInput = findViewById(R.id.touch_char_input);
         controlLayout = findViewById(R.id.control_layout);
         InsetUtils.setInsetsMode(this, true, false);
         surfaceView.getHolder().addCallback(new NativeSurfaceListener());
+        surfaceView.setFocusable(true);
+        surfaceView.setFocusableInTouchMode(true);
+        surfaceView.requestFocus();
 
         // Hide system mouse cursor
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -95,6 +100,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                     state = KeyCodes.GLFW_RELEASE;
                 }
                 GLFW.sendKeyEvent(glfwKey, state, getGLFWMods(event));
+                sendUnicodeForKeyPress(event);
             }
 
             // Dismiss soft keyboard if it appeared
@@ -102,6 +108,19 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             return true;
         }
         return super.dispatchKeyEvent(event);
+    }
+
+    private void sendUnicodeForKeyPress(KeyEvent event) {
+        if (event.getAction() != KeyEvent.ACTION_DOWN || event.isCtrlPressed() || event.isMetaPressed()) {
+            return;
+        }
+
+        int unicodeChar = event.getUnicodeChar();
+        if (unicodeChar == 0 || Character.isISOControl(unicodeChar)) {
+            return;
+        }
+
+        GLFW.sendBulkUnicodeEvent(new String(Character.toChars(unicodeChar)), getGLFWMods(event));
     }
 
     private void hideSoftKeyboard() {
@@ -229,55 +248,39 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     // ─── Physical Mouse ───────────────────────────────────────────────────────
 
     @Override
-    public boolean onGenericMotionEvent(MotionEvent event) {
-        if (!isMouseEvent(event)) return super.onGenericMotionEvent(event);
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        if (isMouseEvent(event) && handleMouseEvent(event)) {
+            return true;
+        }
+        return super.dispatchTouchEvent(event);
+    }
 
+    @Override
+    public boolean onGenericMotionEvent(MotionEvent event) {
+        if (isMouseEvent(event) && handleMouseEvent(event)) {
+            return true;
+        }
+        return super.onGenericMotionEvent(event);
+    }
+
+    private boolean handleMouseEvent(MotionEvent event) {
         int action = event.getActionMasked();
 
         if (action == MotionEvent.ACTION_HOVER_MOVE || action == MotionEvent.ACTION_MOVE) {
-            float x = event.getX();
-            float y = event.getY();
-
-            if (GLFW.isGrabbing()) {
-                float dx = event.getAxisValue(MotionEvent.AXIS_RELATIVE_X);
-                float dy = event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y);
-                if (dx == 0 && dy == 0 && lastMouseX >= 0) {
-                    dx = x - lastMouseX;
-                    dy = y - lastMouseY;
-                }
-                int w = controlLayout.getWidth();
-                int h = controlLayout.getHeight();
-                if (w > 0 && h > 0) {
-                    GLFW.cursorX += dx / w;
-                    GLFW.cursorY += dy / h;
-                    GLFW.sendMousePos();
-                }
-            } else {
-                int w = controlLayout.getWidth();
-                int h = controlLayout.getHeight();
-                if (w > 0 && h > 0) {
-                    GLFW.cursorX = x / w;
-                    GLFW.cursorY = y / h;
-                    GLFW.sendMousePos();
-                }
-            }
-
-            lastMouseX = x;
-            lastMouseY = y;
+            updateMousePosition(event);
             return true;
         }
 
-        if (action == MotionEvent.ACTION_BUTTON_PRESS || action == MotionEvent.ACTION_BUTTON_RELEASE) {
-            int state = (action == MotionEvent.ACTION_BUTTON_PRESS) ? KeyCodes.GLFW_PRESS : KeyCodes.GLFW_RELEASE;
+        if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_UP ||
+            action == MotionEvent.ACTION_BUTTON_PRESS || action == MotionEvent.ACTION_BUTTON_RELEASE) {
+            updateMousePosition(event);
+            int state = (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_BUTTON_PRESS)
+                ? KeyCodes.GLFW_PRESS : KeyCodes.GLFW_RELEASE;
             int androidButton = event.getActionButton();
-            int glfwButton = -1;
-            if (androidButton == MotionEvent.BUTTON_PRIMARY)        glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_LEFT;
-            else if (androidButton == MotionEvent.BUTTON_SECONDARY) glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_RIGHT;
-            else if (androidButton == MotionEvent.BUTTON_TERTIARY)  glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_MIDDLE;
-            if (glfwButton >= 0) {
-                GLFW.sendMouseEvent(glfwButton, state, 0);
-                return true;
+            if (androidButton == 0) {
+                androidButton = MotionEvent.BUTTON_PRIMARY;
             }
+            return sendMouseButton(androidButton, state, getGLFWMods(event));
         }
 
         if (action == MotionEvent.ACTION_SCROLL) {
@@ -287,30 +290,88 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             return true;
         }
 
-        return super.onGenericMotionEvent(event);
+        return false;
+    }
+
+    private void updateMousePosition(MotionEvent event) {
+        float x = event.getX();
+        float y = event.getY();
+        int w = surfaceView.getWidth();
+        int h = surfaceView.getHeight();
+        if (w <= 0 || h <= 0) {
+            w = controlLayout.getWidth();
+            h = controlLayout.getHeight();
+        }
+
+        if (w > 0 && h > 0) {
+            if (GLFW.isGrabbing()) {
+                float dx = event.getAxisValue(MotionEvent.AXIS_RELATIVE_X);
+                float dy = event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y);
+                if (dx == 0 && dy == 0 && lastMouseX >= 0) {
+                    dx = x - lastMouseX;
+                    dy = y - lastMouseY;
+                }
+                GLFW.cursorX += dx / w;
+                GLFW.cursorY += dy / h;
+            } else {
+                GLFW.cursorX = x / w;
+                GLFW.cursorY = y / h;
+            }
+            GLFW.sendMousePos();
+        }
+
+        lastMouseX = x;
+        lastMouseY = y;
+    }
+
+    private boolean sendMouseButton(int androidButton, int state, int mods) {
+        int glfwButton = -1;
+        if ((androidButton & MotionEvent.BUTTON_PRIMARY) != 0)        glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_LEFT;
+        else if ((androidButton & MotionEvent.BUTTON_SECONDARY) != 0) glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_RIGHT;
+        else if ((androidButton & MotionEvent.BUTTON_TERTIARY) != 0)  glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_MIDDLE;
+        else if ((androidButton & MotionEvent.BUTTON_BACK) != 0)      glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_4;
+        else if ((androidButton & MotionEvent.BUTTON_FORWARD) != 0)   glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_5;
+        if (glfwButton < 0) {
+            return false;
+        }
+
+        GLFW.sendMouseEvent(glfwButton, state, mods);
+        return true;
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private boolean isPhysicalKeyboard(KeyEvent event) {
         InputDevice device = InputDevice.getDevice(event.getDeviceId());
-        if (device == null) return false;
-        int sources = device.getSources();
-        return (sources & InputDevice.SOURCE_KEYBOARD) != 0
-            && (sources & InputDevice.SOURCE_TOUCHSCREEN) == 0;
+        if (device == null || event.getDeviceId() == KeyCharacterMap.VIRTUAL_KEYBOARD) return false;
+        return device.getKeyboardType() == InputDevice.KEYBOARD_TYPE_ALPHABETIC ||
+            (isFromSource(event.getSource(), InputDevice.SOURCE_KEYBOARD) &&
+             !isFromSource(event.getSource(), InputDevice.SOURCE_TOUCHSCREEN));
     }
 
     private boolean isMouseEvent(MotionEvent event) {
-        return (event.getSource() & InputDevice.SOURCE_MOUSE) != 0 ||
-               (event.getSource() & InputDevice.SOURCE_MOUSE_RELATIVE) != 0;
+        return isFromSource(event.getSource(), InputDevice.SOURCE_MOUSE) ||
+               isFromSource(event.getSource(), InputDevice.SOURCE_MOUSE_RELATIVE);
+    }
+
+    private boolean isFromSource(int eventSource, int sourceClass) {
+        return (eventSource & sourceClass) == sourceClass;
+    }
+
+    private int getGLFWMods(MotionEvent event) {
+        return getGLFWMods(event.getMetaState());
     }
 
     private int getGLFWMods(KeyEvent event) {
+        return getGLFWMods(event.getMetaState());
+    }
+
+    private int getGLFWMods(int metaState) {
         int mods = 0;
-        if (event.isShiftPressed()) mods |= 0x0001;
-        if (event.isCtrlPressed())  mods |= 0x0002;
-        if (event.isAltPressed())   mods |= 0x0004;
-        if (event.isMetaPressed())  mods |= 0x0008;
+        if ((metaState & KeyEvent.META_SHIFT_ON) != 0) mods |= 0x0001;
+        if ((metaState & KeyEvent.META_CTRL_ON) != 0)  mods |= 0x0002;
+        if ((metaState & KeyEvent.META_ALT_ON) != 0)   mods |= 0x0004;
+        if ((metaState & KeyEvent.META_META_ON) != 0)  mods |= 0x0008;
         return mods;
     }
 
