@@ -4,7 +4,6 @@ import static android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.hardware.usb.UsbManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.InputDevice;
@@ -12,9 +11,9 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.PointerIcon;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.SurfaceView;
 import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.RequiresApi;
@@ -73,34 +72,34 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         }
     }
 
-    // ─── Intercept ALL key events before any view sees them ──────────────────
-    // This is the earliest possible intercept point — stops GBoard and
-    // TouchCharInput from ever receiving physical keyboard events.
+    // ─── Physical Keyboard ────────────────────────────────────────────────────
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (isPhysicalKeyboard(event)) {
-            int action = event.getAction();
             int keyCode = event.getKeyCode();
 
-            // Let volume keys pass through to Android
+            // Let volume keys pass to Android
             if (keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
                 keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
                 return super.dispatchKeyEvent(event);
             }
 
-            if (action == KeyEvent.ACTION_DOWN) {
-                // Handle repeat presses (holding a key)
-                int state = event.getRepeatCount() > 0 ? 2 : KeyCodes.GLFW_PRESS; // 2 = GLFW_REPEAT
-                GLFW.sendRawKeyEvent(keyCode, state, getGLFWMods(event));
-            } else if (action == KeyEvent.ACTION_UP) {
-                GLFW.sendRawKeyEvent(keyCode, KeyCodes.GLFW_RELEASE, getGLFWMods(event));
+            int glfwKey = androidToGlfw(keyCode);
+            if (glfwKey != KeyCodes.GLFW_KEY_NONE) {
+                int action = event.getAction();
+                int state;
+                if (action == KeyEvent.ACTION_DOWN) {
+                    state = event.getRepeatCount() > 0 ? 2 : KeyCodes.GLFW_PRESS;
+                } else {
+                    state = KeyCodes.GLFW_RELEASE;
+                }
+                GLFW.sendKeyEvent(glfwKey, state, getGLFWMods(event));
             }
 
-            // Dismiss any soft keyboard that may be visible
+            // Dismiss soft keyboard if it appeared
             hideSoftKeyboard();
-
-            return true; // Consume — nothing else sees this event
+            return true;
         }
         return super.dispatchKeyEvent(event);
     }
@@ -108,8 +107,122 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     private void hideSoftKeyboard() {
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         View focus = getCurrentFocus();
-        if (focus != null) {
-            imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
+        if (focus != null) imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
+    }
+
+    // ─── Android → GLFW keycode map ───────────────────────────────────────────
+
+    private int androidToGlfw(int keyCode) {
+        switch (keyCode) {
+            // Letters
+            case KeyEvent.KEYCODE_A: return KeyCodes.GLFW_KEY_A;
+            case KeyEvent.KEYCODE_B: return KeyCodes.GLFW_KEY_B;
+            case KeyEvent.KEYCODE_C: return KeyCodes.GLFW_KEY_C;
+            case KeyEvent.KEYCODE_D: return KeyCodes.GLFW_KEY_D;
+            case KeyEvent.KEYCODE_E: return KeyCodes.GLFW_KEY_E;
+            case KeyEvent.KEYCODE_F: return KeyCodes.GLFW_KEY_F;
+            case KeyEvent.KEYCODE_G: return KeyCodes.GLFW_KEY_G;
+            case KeyEvent.KEYCODE_H: return KeyCodes.GLFW_KEY_H;
+            case KeyEvent.KEYCODE_I: return KeyCodes.GLFW_KEY_I;
+            case KeyEvent.KEYCODE_J: return KeyCodes.GLFW_KEY_J;
+            case KeyEvent.KEYCODE_K: return KeyCodes.GLFW_KEY_K;
+            case KeyEvent.KEYCODE_L: return KeyCodes.GLFW_KEY_L;
+            case KeyEvent.KEYCODE_M: return KeyCodes.GLFW_KEY_M;
+            case KeyEvent.KEYCODE_N: return KeyCodes.GLFW_KEY_N;
+            case KeyEvent.KEYCODE_O: return KeyCodes.GLFW_KEY_O;
+            case KeyEvent.KEYCODE_P: return KeyCodes.GLFW_KEY_P;
+            case KeyEvent.KEYCODE_Q: return KeyCodes.GLFW_KEY_Q;
+            case KeyEvent.KEYCODE_R: return KeyCodes.GLFW_KEY_R;
+            case KeyEvent.KEYCODE_S: return KeyCodes.GLFW_KEY_S;
+            case KeyEvent.KEYCODE_T: return KeyCodes.GLFW_KEY_T;
+            case KeyEvent.KEYCODE_U: return KeyCodes.GLFW_KEY_U;
+            case KeyEvent.KEYCODE_V: return KeyCodes.GLFW_KEY_V;
+            case KeyEvent.KEYCODE_W: return KeyCodes.GLFW_KEY_W;
+            case KeyEvent.KEYCODE_X: return KeyCodes.GLFW_KEY_X;
+            case KeyEvent.KEYCODE_Y: return KeyCodes.GLFW_KEY_Y;
+            case KeyEvent.KEYCODE_Z: return KeyCodes.GLFW_KEY_Z;
+            // Numbers
+            case KeyEvent.KEYCODE_0: return KeyCodes.GLFW_KEY_0;
+            case KeyEvent.KEYCODE_1: return KeyCodes.GLFW_KEY_1;
+            case KeyEvent.KEYCODE_2: return KeyCodes.GLFW_KEY_2;
+            case KeyEvent.KEYCODE_3: return KeyCodes.GLFW_KEY_3;
+            case KeyEvent.KEYCODE_4: return KeyCodes.GLFW_KEY_4;
+            case KeyEvent.KEYCODE_5: return KeyCodes.GLFW_KEY_5;
+            case KeyEvent.KEYCODE_6: return KeyCodes.GLFW_KEY_6;
+            case KeyEvent.KEYCODE_7: return KeyCodes.GLFW_KEY_7;
+            case KeyEvent.KEYCODE_8: return KeyCodes.GLFW_KEY_8;
+            case KeyEvent.KEYCODE_9: return KeyCodes.GLFW_KEY_9;
+            // Function keys
+            case KeyEvent.KEYCODE_F1:  return KeyCodes.GLFW_KEY_F1;
+            case KeyEvent.KEYCODE_F2:  return KeyCodes.GLFW_KEY_F2;
+            case KeyEvent.KEYCODE_F3:  return KeyCodes.GLFW_KEY_F3;
+            case KeyEvent.KEYCODE_F4:  return KeyCodes.GLFW_KEY_F4;
+            case KeyEvent.KEYCODE_F5:  return KeyCodes.GLFW_KEY_F5;
+            case KeyEvent.KEYCODE_F6:  return KeyCodes.GLFW_KEY_F6;
+            case KeyEvent.KEYCODE_F7:  return KeyCodes.GLFW_KEY_F7;
+            case KeyEvent.KEYCODE_F8:  return KeyCodes.GLFW_KEY_F8;
+            case KeyEvent.KEYCODE_F9:  return KeyCodes.GLFW_KEY_F9;
+            case KeyEvent.KEYCODE_F10: return KeyCodes.GLFW_KEY_F10;
+            case KeyEvent.KEYCODE_F11: return KeyCodes.GLFW_KEY_F11;
+            case KeyEvent.KEYCODE_F12: return KeyCodes.GLFW_KEY_F12;
+            // Special keys
+            case KeyEvent.KEYCODE_ESCAPE:    return KeyCodes.GLFW_KEY_ESCAPE;
+            case KeyEvent.KEYCODE_ENTER:     return KeyCodes.GLFW_KEY_ENTER;
+            case KeyEvent.KEYCODE_TAB:       return KeyCodes.GLFW_KEY_TAB;
+            case KeyEvent.KEYCODE_DEL:       return KeyCodes.GLFW_KEY_BACKSPACE;
+            case KeyEvent.KEYCODE_FORWARD_DEL: return KeyCodes.GLFW_KEY_DELETE;
+            case KeyEvent.KEYCODE_INSERT:    return KeyCodes.GLFW_KEY_INSERT;
+            case KeyEvent.KEYCODE_SPACE:     return KeyCodes.GLFW_KEY_SPACE;
+            case KeyEvent.KEYCODE_CAPS_LOCK: return KeyCodes.GLFW_KEY_CAPS_LOCK;
+            // Arrow keys
+            case KeyEvent.KEYCODE_DPAD_UP:    return KeyCodes.GLFW_KEY_UP;
+            case KeyEvent.KEYCODE_DPAD_DOWN:  return KeyCodes.GLFW_KEY_DOWN;
+            case KeyEvent.KEYCODE_DPAD_LEFT:  return KeyCodes.GLFW_KEY_LEFT;
+            case KeyEvent.KEYCODE_DPAD_RIGHT: return KeyCodes.GLFW_KEY_RIGHT;
+            // Navigation
+            case KeyEvent.KEYCODE_PAGE_UP:   return KeyCodes.GLFW_KEY_PAGE_UP;
+            case KeyEvent.KEYCODE_PAGE_DOWN: return KeyCodes.GLFW_KEY_PAGE_DOWN;
+            case KeyEvent.KEYCODE_MOVE_HOME: return KeyCodes.GLFW_KEY_HOME;
+            case KeyEvent.KEYCODE_MOVE_END:  return KeyCodes.GLFW_KEY_END;
+            // Modifiers
+            case KeyEvent.KEYCODE_SHIFT_LEFT:   return KeyCodes.GLFW_KEY_LEFT_SHIFT;
+            case KeyEvent.KEYCODE_SHIFT_RIGHT:  return KeyCodes.GLFW_KEY_RIGHT_SHIFT;
+            case KeyEvent.KEYCODE_CTRL_LEFT:    return KeyCodes.GLFW_KEY_LEFT_CONTROL;
+            case KeyEvent.KEYCODE_CTRL_RIGHT:   return KeyCodes.GLFW_KEY_RIGHT_CONTROL;
+            case KeyEvent.KEYCODE_ALT_LEFT:     return KeyCodes.GLFW_KEY_LEFT_ALT;
+            case KeyEvent.KEYCODE_ALT_RIGHT:    return KeyCodes.GLFW_KEY_RIGHT_ALT;
+            case KeyEvent.KEYCODE_META_LEFT:    return KeyCodes.GLFW_KEY_LEFT_SUPER;
+            case KeyEvent.KEYCODE_META_RIGHT:   return KeyCodes.GLFW_KEY_RIGHT_SUPER;
+            // Punctuation
+            case KeyEvent.KEYCODE_COMMA:        return KeyCodes.GLFW_KEY_COMMA;
+            case KeyEvent.KEYCODE_PERIOD:       return KeyCodes.GLFW_KEY_PERIOD;
+            case KeyEvent.KEYCODE_SLASH:        return KeyCodes.GLFW_KEY_SLASH;
+            case KeyEvent.KEYCODE_SEMICOLON:    return KeyCodes.GLFW_KEY_SEMICOLON;
+            case KeyEvent.KEYCODE_APOSTROPHE:   return KeyCodes.GLFW_KEY_APOSTROPHE;
+            case KeyEvent.KEYCODE_LEFT_BRACKET: return KeyCodes.GLFW_KEY_LEFT_BRACKET;
+            case KeyEvent.KEYCODE_RIGHT_BRACKET:return KeyCodes.GLFW_KEY_RIGHT_BRACKET;
+            case KeyEvent.KEYCODE_BACKSLASH:    return KeyCodes.GLFW_KEY_BACKSLASH;
+            case KeyEvent.KEYCODE_MINUS:        return KeyCodes.GLFW_KEY_MINUS;
+            case KeyEvent.KEYCODE_EQUALS:       return KeyCodes.GLFW_KEY_EQUAL;
+            case KeyEvent.KEYCODE_GRAVE:        return KeyCodes.GLFW_KEY_GRAVE_ACCENT;
+            // Numpad
+            case KeyEvent.KEYCODE_NUMPAD_0: return KeyCodes.GLFW_KEY_KP_0;
+            case KeyEvent.KEYCODE_NUMPAD_1: return KeyCodes.GLFW_KEY_KP_1;
+            case KeyEvent.KEYCODE_NUMPAD_2: return KeyCodes.GLFW_KEY_KP_2;
+            case KeyEvent.KEYCODE_NUMPAD_3: return KeyCodes.GLFW_KEY_KP_3;
+            case KeyEvent.KEYCODE_NUMPAD_4: return KeyCodes.GLFW_KEY_KP_4;
+            case KeyEvent.KEYCODE_NUMPAD_5: return KeyCodes.GLFW_KEY_KP_5;
+            case KeyEvent.KEYCODE_NUMPAD_6: return KeyCodes.GLFW_KEY_KP_6;
+            case KeyEvent.KEYCODE_NUMPAD_7: return KeyCodes.GLFW_KEY_KP_7;
+            case KeyEvent.KEYCODE_NUMPAD_8: return KeyCodes.GLFW_KEY_KP_8;
+            case KeyEvent.KEYCODE_NUMPAD_9: return KeyCodes.GLFW_KEY_KP_9;
+            case KeyEvent.KEYCODE_NUMPAD_DOT:      return KeyCodes.GLFW_KEY_KP_DECIMAL;
+            case KeyEvent.KEYCODE_NUMPAD_DIVIDE:   return KeyCodes.GLFW_KEY_KP_DIVIDE;
+            case KeyEvent.KEYCODE_NUMPAD_MULTIPLY: return KeyCodes.GLFW_KEY_KP_MULTIPLY;
+            case KeyEvent.KEYCODE_NUMPAD_SUBTRACT: return KeyCodes.GLFW_KEY_KP_SUBTRACT;
+            case KeyEvent.KEYCODE_NUMPAD_ADD:      return KeyCodes.GLFW_KEY_KP_ADD;
+            case KeyEvent.KEYCODE_NUMPAD_ENTER:    return KeyCodes.GLFW_KEY_KP_ENTER;
+            default: return KeyCodes.GLFW_KEY_NONE;
         }
     }
 
@@ -121,13 +234,11 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
         int action = event.getActionMasked();
 
-        // Mouse movement
         if (action == MotionEvent.ACTION_HOVER_MOVE || action == MotionEvent.ACTION_MOVE) {
             float x = event.getX();
             float y = event.getY();
 
             if (GLFW.isGrabbing()) {
-                // In-game: relative movement
                 float dx = event.getAxisValue(MotionEvent.AXIS_RELATIVE_X);
                 float dy = event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y);
                 if (dx == 0 && dy == 0 && lastMouseX >= 0) {
@@ -142,7 +253,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                     GLFW.sendMousePos();
                 }
             } else {
-                // In menu: absolute position
                 int w = controlLayout.getWidth();
                 int h = controlLayout.getHeight();
                 if (w > 0 && h > 0) {
@@ -157,25 +267,23 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             return true;
         }
 
-        // Mouse buttons
         if (action == MotionEvent.ACTION_BUTTON_PRESS || action == MotionEvent.ACTION_BUTTON_RELEASE) {
             int state = (action == MotionEvent.ACTION_BUTTON_PRESS) ? KeyCodes.GLFW_PRESS : KeyCodes.GLFW_RELEASE;
             int androidButton = event.getActionButton();
             int glfwButton = -1;
-            if (androidButton == MotionEvent.BUTTON_PRIMARY)             glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_LEFT;
-            else if (androidButton == MotionEvent.BUTTON_SECONDARY)      glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_RIGHT;
-            else if (androidButton == MotionEvent.BUTTON_TERTIARY)       glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_MIDDLE;
+            if (androidButton == MotionEvent.BUTTON_PRIMARY)        glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_LEFT;
+            else if (androidButton == MotionEvent.BUTTON_SECONDARY) glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_RIGHT;
+            else if (androidButton == MotionEvent.BUTTON_TERTIARY)  glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_MIDDLE;
             if (glfwButton >= 0) {
                 GLFW.sendMouseEvent(glfwButton, state, 0);
                 return true;
             }
         }
 
-        // Scroll wheel
         if (action == MotionEvent.ACTION_SCROLL) {
-            float scrollY = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
-            float scrollX = event.getAxisValue(MotionEvent.AXIS_HSCROLL);
-            GLFW.sendScrollEvent(scrollX, scrollY);
+            GLFW.sendScrollEvent(
+                event.getAxisValue(MotionEvent.AXIS_HSCROLL),
+                event.getAxisValue(MotionEvent.AXIS_VSCROLL));
             return true;
         }
 
@@ -188,7 +296,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         InputDevice device = InputDevice.getDevice(event.getDeviceId());
         if (device == null) return false;
         int sources = device.getSources();
-        // Physical keyboard: has keyboard source but NOT touchscreen
         return (sources & InputDevice.SOURCE_KEYBOARD) != 0
             && (sources & InputDevice.SOURCE_TOUCHSCREEN) == 0;
     }
@@ -200,10 +307,10 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     private int getGLFWMods(KeyEvent event) {
         int mods = 0;
-        if (event.isShiftPressed()) mods |= 0x0001; // GLFW_MOD_SHIFT
-        if (event.isCtrlPressed())  mods |= 0x0002; // GLFW_MOD_CONTROL
-        if (event.isAltPressed())   mods |= 0x0004; // GLFW_MOD_ALT
-        if (event.isMetaPressed())  mods |= 0x0008; // GLFW_MOD_SUPER
+        if (event.isShiftPressed()) mods |= 0x0001;
+        if (event.isCtrlPressed())  mods |= 0x0002;
+        if (event.isAltPressed())   mods |= 0x0004;
+        if (event.isMetaPressed())  mods |= 0x0008;
         return mods;
     }
 
