@@ -51,6 +51,10 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // FIX 1: Hide status bar and navigation bar so mouse moving up won't reveal them
+        hideSystemUI();
+
         SurfaceView surfaceView = findViewById(R.id.surface_view);
         touchCharInput = findViewById(R.id.touch_char_input);
         controlLayout = findViewById(R.id.control_layout);
@@ -69,6 +73,42 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         if (!isRunning) {
             isRunning = true;
             new Thread(this::kickstart).start();
+        }
+    }
+
+    // FIX 1: Method to hide status bar and navigation bar
+    private void hideSystemUI() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Modern way for Android 11+
+            getWindow().setDecorFitsSystemWindows(false);
+            if (getWindow().getInsetsController() != null) {
+                getWindow().getInsetsController().hide(
+                    android.view.WindowInsets.Type.statusBars() |
+                    android.view.WindowInsets.Type.navigationBars()
+                );
+                getWindow().getInsetsController().setSystemBarsBehavior(
+                    android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPING
+                );
+            }
+        } else {
+            // Old way for Android 10 and below
+            getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_FULLSCREEN |
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            );
+        }
+    }
+
+    // FIX 1: Re-hide the status bar if Android brings it back
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            hideSystemUI();
         }
     }
 
@@ -292,12 +332,15 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
+    // FIX 2: Better Gboard detection - virtual keyboards have deviceId of -1 or 0
     private boolean isPhysicalKeyboard(KeyEvent event) {
         InputDevice device = InputDevice.getDevice(event.getDeviceId());
         if (device == null) return false;
         int sources = device.getSources();
-        return (sources & InputDevice.SOURCE_KEYBOARD) != 0
-            && (sources & InputDevice.SOURCE_TOUCHSCREEN) == 0;
+        boolean hasKeyboard = (sources & InputDevice.SOURCE_KEYBOARD) != 0;
+        boolean hasTouchscreen = (sources & InputDevice.SOURCE_TOUCHSCREEN) != 0;
+        boolean isVirtual = event.getDeviceId() == -1 || event.getDeviceId() == 0;
+        return hasKeyboard && !hasTouchscreen && !isVirtual;
     }
 
     private boolean isMouseEvent(MotionEvent event) {
