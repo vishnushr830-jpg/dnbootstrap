@@ -7,7 +7,6 @@ import android.app.Activity;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.InputDevice;
-import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -93,14 +92,12 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             int glfwKey = androidToGlfw(keyCode);
             if (glfwKey != KeyCodes.GLFW_KEY_NONE) {
                 int action = event.getAction();
-                int state;
-                if (action == KeyEvent.ACTION_DOWN) {
-                    state = event.getRepeatCount() > 0 ? 2 : KeyCodes.GLFW_PRESS;
-                } else {
-                    state = KeyCodes.GLFW_RELEASE;
+                if (action == KeyEvent.ACTION_DOWN && event.getRepeatCount() > 0) {
+                    return true;
                 }
+
+                int state = action == KeyEvent.ACTION_DOWN ? KeyCodes.GLFW_PRESS : KeyCodes.GLFW_RELEASE;
                 GLFW.sendKeyEvent(glfwKey, state, getGLFWMods(event));
-                sendUnicodeForKeyPress(event);
             }
 
             // Dismiss soft keyboard if it appeared
@@ -108,19 +105,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             return true;
         }
         return super.dispatchKeyEvent(event);
-    }
-
-    private void sendUnicodeForKeyPress(KeyEvent event) {
-        if (event.getAction() != KeyEvent.ACTION_DOWN || event.isCtrlPressed() || event.isMetaPressed()) {
-            return;
-        }
-
-        int unicodeChar = event.getUnicodeChar();
-        if (unicodeChar == 0 || Character.isISOControl(unicodeChar)) {
-            return;
-        }
-
-        GLFW.sendBulkUnicodeEvent(new String(Character.toChars(unicodeChar)), getGLFWMods(event));
     }
 
     private void hideSoftKeyboard() {
@@ -343,7 +327,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     private boolean isPhysicalKeyboard(KeyEvent event) {
         InputDevice device = InputDevice.getDevice(event.getDeviceId());
-        if (device == null || event.getDeviceId() == KeyCharacterMap.VIRTUAL_KEYBOARD) return false;
+        if (device == null) return false;
         return device.getKeyboardType() == InputDevice.KEYBOARD_TYPE_ALPHABETIC ||
             (isFromSource(event.getSource(), InputDevice.SOURCE_KEYBOARD) &&
              !isFromSource(event.getSource(), InputDevice.SOURCE_TOUCHSCREEN));
