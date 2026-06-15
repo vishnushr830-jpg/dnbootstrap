@@ -43,7 +43,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     private static boolean isRunning = false;
 
-    // Track last mouse position for delta calculation
     private float lastMouseX = -1, lastMouseY = -1;
 
     @SuppressLint("ClickableViewAccessibility")
@@ -65,7 +64,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         }
     }
 
-    // ─── Physical Keyboard ───────────────────────────────────────────────────
+    // ─── Physical Keyboard ────────────────────────────────────────────────────
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
@@ -93,12 +92,12 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
         int action = event.getActionMasked();
 
+        // Mouse movement
         if (action == MotionEvent.ACTION_HOVER_MOVE || action == MotionEvent.ACTION_MOVE) {
             float x = event.getX();
             float y = event.getY();
 
             if (GLFW.isGrabbing()) {
-                // In-game: use relative movement
                 float dx = event.getAxisValue(MotionEvent.AXIS_RELATIVE_X);
                 float dy = event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y);
                 if (dx == 0 && dy == 0 && lastMouseX >= 0) {
@@ -113,7 +112,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                     GLFW.sendMousePos();
                 }
             } else {
-                // In menu: use absolute position
                 int w = controlLayout.getWidth();
                 int h = controlLayout.getHeight();
                 if (w > 0 && h > 0) {
@@ -128,7 +126,21 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             return true;
         }
 
-        // Mouse scroll wheel
+        // Mouse buttons
+        if (action == MotionEvent.ACTION_BUTTON_PRESS || action == MotionEvent.ACTION_BUTTON_RELEASE) {
+            int state = (action == MotionEvent.ACTION_BUTTON_PRESS) ? KeyCodes.GLFW_PRESS : KeyCodes.GLFW_RELEASE;
+            int androidButton = event.getActionButton();
+            int glfwButton = -1;
+            if (androidButton == MotionEvent.BUTTON_PRIMARY)        glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_LEFT;
+            else if (androidButton == MotionEvent.BUTTON_SECONDARY) glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_RIGHT;
+            else if (androidButton == MotionEvent.BUTTON_TERTIARY)  glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_MIDDLE;
+            if (glfwButton >= 0) {
+                GLFW.sendMouseEvent(glfwButton, state, 0);
+                return true;
+            }
+        }
+
+        // Scroll wheel
         if (action == MotionEvent.ACTION_SCROLL) {
             float scrollY = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
             float scrollX = event.getAxisValue(MotionEvent.AXIS_HSCROLL);
@@ -139,32 +151,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         return super.onGenericMotionEvent(event);
     }
 
-    @Override
-    public boolean onMouseEvent(MotionEvent event) {
-        if (!isMouseEvent(event)) return false;
-
-        int action = event.getActionMasked();
-        int glfwButton = -1;
-
-        int androidButton = event.getActionButton();
-        if (androidButton == MotionEvent.BUTTON_PRIMARY)   glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_LEFT;
-        else if (androidButton == MotionEvent.BUTTON_SECONDARY) glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_RIGHT;
-        else if (androidButton == MotionEvent.BUTTON_TERTIARY)  glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_MIDDLE;
-
-        if (glfwButton < 0) return false;
-
-        if (action == MotionEvent.ACTION_BUTTON_PRESS) {
-            GLFW.sendMouseEvent(glfwButton, KeyCodes.GLFW_PRESS, 0);
-            return true;
-        } else if (action == MotionEvent.ACTION_BUTTON_RELEASE) {
-            GLFW.sendMouseEvent(glfwButton, KeyCodes.GLFW_RELEASE, 0);
-            return true;
-        }
-
-        return false;
-    }
-
-    // ─── Helpers ─────────────────────────────────────────────────────────────
+    // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private boolean isPhysicalKeyboard(KeyEvent event) {
         return event.getDeviceId() != -1 &&
@@ -178,10 +165,10 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     private int getGLFWMods(KeyEvent event) {
         int mods = 0;
-        if (event.isShiftPressed())   mods |= 0x0001; // GLFW_MOD_SHIFT
-        if (event.isCtrlPressed())    mods |= 0x0002; // GLFW_MOD_CONTROL
-        if (event.isAltPressed())     mods |= 0x0004; // GLFW_MOD_ALT
-        if (event.isMetaPressed())    mods |= 0x0008; // GLFW_MOD_SUPER
+        if (event.isShiftPressed()) mods |= 0x0001;
+        if (event.isCtrlPressed())  mods |= 0x0002;
+        if (event.isAltPressed())   mods |= 0x0004;
+        if (event.isMetaPressed())  mods |= 0x0008;
         return mods;
     }
 
