@@ -6,6 +6,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -14,6 +15,8 @@ import android.view.PointerIcon;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.RequiresApi;
@@ -46,6 +49,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     private static boolean isRunning = false;
     private float lastMouseX = -1, lastMouseY = -1;
+    private long lastImmersiveRestoreTime;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -61,11 +65,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         surfaceView.setFocusableInTouchMode(true);
         surfaceView.requestFocus();
 
-        // Hide system mouse cursor
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            getWindow().getDecorView().setPointerIcon(
-                PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
-        }
+        restoreImmersiveMode();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerOnBackInvoked();
@@ -100,8 +100,9 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                 GLFW.sendKeyEvent(glfwKey, state, getGLFWMods(event));
             }
 
-            // Dismiss soft keyboard if it appeared
+            // Dismiss soft keyboard and restore immersive mode if Android revealed system UI.
             hideSoftKeyboard();
+            restoreImmersiveMode();
             return true;
         }
         return super.dispatchKeyEvent(event);
@@ -111,6 +112,59 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         View focus = getCurrentFocus();
         if (focus != null) imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
+    }
+
+    private void hideSystemMouseCursor() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            return;
+        }
+
+        PointerIcon nullPointer = PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL);
+        getWindow().getDecorView().setPointerIcon(nullPointer);
+        surfaceView.setPointerIcon(nullPointer);
+        controlLayout.setPointerIcon(nullPointer);
+    }
+
+    private void restoreImmersiveMode() {
+        hideSystemMouseCursor();
+        hideSystemBars();
+
+        long now = SystemClock.uptimeMillis();
+        if (now - lastImmersiveRestoreTime < 500) {
+            return;
+        }
+
+        lastImmersiveRestoreTime = now;
+        View decorView = getWindow().getDecorView();
+        decorView.post(this::hideSystemBars);
+        decorView.postDelayed(this::hideSystemBars, 250);
+    }
+
+    @SuppressWarnings("deprecation")
+    private void hideSystemBars() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController insetsController = getWindow().getInsetsController();
+            if (insetsController != null) {
+                insetsController.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                insetsController.hide(WindowInsets.Type.systemBars());
+            }
+            return;
+        }
+
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            | View.SYSTEM_UI_FLAG_FULLSCREEN
+            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            restoreImmersiveMode();
+        }
     }
 
     // ─── Android → GLFW keycode map ───────────────────────────────────────────
@@ -248,6 +302,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     }
 
     private boolean handleMouseEvent(MotionEvent event) {
+        restoreImmersiveMode();
         int action = event.getActionMasked();
 
         if (action == MotionEvent.ACTION_HOVER_MOVE || action == MotionEvent.ACTION_MOVE) {
