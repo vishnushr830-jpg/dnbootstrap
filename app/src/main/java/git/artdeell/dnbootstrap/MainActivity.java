@@ -87,7 +87,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                     android.view.WindowInsets.Type.navigationBars()
                 );
                 getWindow().getInsetsController().setSystemBarsBehavior(
-                    android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPING
+                    android.view.WindowInsetsController.BEHAVIOR_SHOW_BARS_BY_SWIPE
                 );
             }
         } else {
