@@ -304,11 +304,11 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     }
 
     @Override
-    public boolean onCapturedPointerEvent(MotionEvent event) {
+    public boolean dispatchCapturedPointerEvent(MotionEvent event) {
         if (handleMouseEvent(event)) {
             return true;
         }
-        return super.onCapturedPointerEvent(event);
+        return super.dispatchCapturedPointerEvent(event);
     }
 
     @Override
