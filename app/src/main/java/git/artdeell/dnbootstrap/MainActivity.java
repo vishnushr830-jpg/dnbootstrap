@@ -65,6 +65,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         surfaceView.setFocusable(true);
         surfaceView.setFocusableInTouchMode(true);
         surfaceView.requestFocus();
+        setCapturedPointerListenerIfSupported();
         GLFW.addGrabListener(this);
 
         restoreImmersiveMode();
@@ -304,14 +305,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     }
 
     @Override
-    public boolean dispatchCapturedPointerEvent(MotionEvent event) {
-        if (handleMouseEvent(event)) {
-            return true;
-        }
-        return super.dispatchCapturedPointerEvent(event);
-    }
-
-    @Override
     public void onGrabState(boolean isGrabbing) {
         runOnUiThread(() -> {
             if (isGrabbing) {
@@ -321,6 +314,12 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             }
             restoreImmersiveMode();
         });
+    }
+
+    private void setCapturedPointerListenerIfSupported() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            surfaceView.setOnCapturedPointerListener((view, event) -> handleMouseEvent(event));
+        }
     }
 
     private void requestPointerCaptureIfSupported() {
