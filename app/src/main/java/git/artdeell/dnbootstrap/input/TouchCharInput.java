@@ -15,6 +15,7 @@ import android.widget.EditText;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import android.view.InputDevice;
 import git.artdeell.dnbootstrap.glfw.GLFW;
 import git.artdeell.dnbootstrap.glfw.KeyCodes;
 
@@ -63,6 +64,34 @@ public class TouchCharInput extends EditText {
             GLFW.sendKeyEvent(KeyCodes.GLFW_KEY_BACKSPACE, 0, 0);
         }
         GLFW.sendBulkUnicodeEvent(charsAdded, 0);
+    }
+
+    // Call this to disable TouchCharInput when a physical keyboard is connected
+    public void setPhysicalKeyboardConnected(boolean connected) {
+        if (connected) {
+            // Physical keyboard connected - disable this view completely
+            // so it doesn't steal focus or trigger GBoard
+            setFocusable(false);
+            setFocusableInTouchMode(false);
+            clearFocus();
+        } else {
+            // Physical keyboard disconnected - re-enable for on-screen keyboard
+            setFocusable(true);
+            setFocusableInTouchMode(true);
+        }
+    }
+
+    public static boolean isPhysicalKeyboardConnected() {
+        for (int id : InputDevice.getDeviceIds()) {
+            InputDevice device = InputDevice.getDevice(id);
+            if (device == null) continue;
+            int sources = device.getSources();
+            if ((sources & InputDevice.SOURCE_KEYBOARD) != 0
+                && (sources & InputDevice.SOURCE_TOUCHSCREEN) == 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void requestKeyboard() {
