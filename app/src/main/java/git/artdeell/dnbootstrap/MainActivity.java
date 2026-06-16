@@ -67,6 +67,11 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             controlLayout.setPointerIcon(nullIcon);
         }
         surfaceView.getHolder().addCallback(new NativeSurfaceListener());
+
+        // Disable TouchCharInput if physical keyboard is already connected
+        if (TouchCharInput.isPhysicalKeyboardConnected()) {
+            touchCharInput.setPhysicalKeyboardConnected(true);
+        }
         // Lock mouse to app - hides system cursor and prevents system gestures
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             surfaceView.setOnCapturedPointerListener(capturedPointerListener);
