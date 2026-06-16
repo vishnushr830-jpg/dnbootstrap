@@ -66,13 +66,12 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             surfaceView.setPointerIcon(nullIcon);
             controlLayout.setPointerIcon(nullIcon);
         }
-        surfaceView.setFocusable(true);
-        surfaceView.setFocusableInTouchMode(true);
         surfaceView.getHolder().addCallback(new NativeSurfaceListener());
-        // Set captured pointer listener
+        // Lock mouse to app - hides system cursor and prevents system gestures
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             surfaceView.setOnCapturedPointerListener(capturedPointerListener);
         }
+        surfaceView.requestPointerCapture();
 
         // Hide system mouse cursor
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -94,6 +93,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     @Override
     protected void onResume() {
         super.onResume();
+        if (surfaceView != null) surfaceView.requestPointerCapture();
         hideSystemUI();
     }
 
@@ -139,11 +139,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             hideSystemUI();
-            // Request pointer capture here - window is guaranteed to have focus
-            surfaceView.setFocusable(true);
-            surfaceView.setFocusableInTouchMode(true);
-            surfaceView.requestFocus();
-            surfaceView.requestPointerCapture();
         }
     }
 
@@ -161,15 +156,20 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             }
 
             int glfwKey = androidToGlfw(keyCode);
-            if (glfwKey != KeyCodes.GLFW_KEY_NONE) {
+            if (glfwKey > 0) {  // Only send valid GLFW keys (> 0)
                 int action = event.getAction();
                 int state;
                 if (action == KeyEvent.ACTION_DOWN) {
-                    state = event.getRepeatCount() > 0 ? 2 : KeyCodes.GLFW_PRESS;
+                    // Don't send repeat state (2) - custom GLFW may not support it
+                    state = KeyCodes.GLFW_PRESS;
                 } else {
                     state = KeyCodes.GLFW_RELEASE;
                 }
-                GLFW.sendKeyEvent(glfwKey, state, getGLFWMods(event));
+                try {
+                    GLFW.sendKeyEvent(glfwKey, state, getGLFWMods(event));
+                } catch (Exception e) {
+                    // Ignore key events that GLFW can't handle
+                }
             }
 
             // Dismiss soft keyboard if it appeared
