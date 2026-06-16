@@ -67,7 +67,10 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             controlLayout.setPointerIcon(nullIcon);
         }
         surfaceView.getHolder().addCallback(new NativeSurfaceListener());
-        // Request pointer capture to lock mouse to app
+        // Lock mouse to app - hides system cursor and prevents system gestures
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            surfaceView.setOnCapturedPointerListener(capturedPointerListener);
+        }
         surfaceView.requestPointerCapture();
 
         // Hide system mouse cursor
@@ -295,9 +298,8 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     // ─── Physical Mouse ───────────────────────────────────────────────────────
 
-    // Called when pointer capture is active (mouse locked to app)
-    @Override
-    public boolean onCapturedPointerEvent(MotionEvent event) {
+    // Captured pointer listener set on surfaceView
+    private final View.OnCapturedPointerListener capturedPointerListener = (v, event) -> {
         int action = event.getActionMasked();
         if (action == MotionEvent.ACTION_MOVE) {
             float dx = event.getX();
@@ -330,7 +332,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             return true;
         }
         return false;
-    }
+    };
 
     @Override
     public boolean onGenericMotionEvent(MotionEvent event) {
