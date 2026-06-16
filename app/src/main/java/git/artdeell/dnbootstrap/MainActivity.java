@@ -59,11 +59,18 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         touchCharInput = findViewById(R.id.touch_char_input);
         controlLayout = findViewById(R.id.control_layout);
         InsetUtils.setInsetsMode(this, true, false);
+        // Hide cursor on all views
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            PointerIcon nullIcon = PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL);
+            surfaceView.setPointerIcon(nullIcon);
+            controlLayout.setPointerIcon(nullIcon);
+        }
         surfaceView.getHolder().addCallback(new NativeSurfaceListener());
 
         // Hide system mouse cursor
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            getWindow().getDecorView().setPointerIcon(
+            View decorView = getWindow().getDecorView();
+            decorView.setPointerIcon(
                 PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
         }
 
@@ -87,7 +94,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                     android.view.WindowInsets.Type.navigationBars()
                 );
                 getWindow().getInsetsController().setSystemBarsBehavior(
-                    android.view.WindowInsetsController.BEHAVIOR_SHOW_BARS_BY_SWIPE
+                    android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                 );
             }
         } else {
