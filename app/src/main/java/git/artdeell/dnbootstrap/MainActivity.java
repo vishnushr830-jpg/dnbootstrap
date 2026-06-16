@@ -41,6 +41,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     private TouchCharInput touchCharInput;
     private ControlLayout controlLayout;
+    private SurfaceView surfaceView;
     private View layoutEditor;
 
     private static boolean isRunning = false;
@@ -55,7 +56,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         // FIX 1: Hide status bar and navigation bar so mouse moving up won't reveal them
         hideSystemUI();
 
-        SurfaceView surfaceView = findViewById(R.id.surface_view);
+        surfaceView = findViewById(R.id.surface_view);
         touchCharInput = findViewById(R.id.touch_char_input);
         controlLayout = findViewById(R.id.control_layout);
         InsetUtils.setInsetsMode(this, true, false);
@@ -66,6 +67,8 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             controlLayout.setPointerIcon(nullIcon);
         }
         surfaceView.getHolder().addCallback(new NativeSurfaceListener());
+        // Request pointer capture to lock mouse to app
+        surfaceView.requestPointerCapture();
 
         // Hide system mouse cursor
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -80,6 +83,23 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         if (!isRunning) {
             isRunning = true;
             new Thread(this::kickstart).start();
+        }
+    }
+
+    // Re-request pointer capture when app resumes
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (surfaceView != null) surfaceView.requestPointerCapture();
+        hideSystemUI();
+    }
+
+    @Override
+    public void onPointerCaptureChanged(boolean hasCapture) {
+        super.onPointerCaptureChanged(hasCapture);
+        // If we lost capture, re-request it
+        if (!hasCapture && surfaceView != null) {
+            surfaceView.requestPointerCapture();
         }
     }
 
@@ -274,6 +294,43 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     }
 
     // ─── Physical Mouse ───────────────────────────────────────────────────────
+
+    // Called when pointer capture is active (mouse locked to app)
+    @Override
+    public boolean onCapturedPointerEvent(MotionEvent event) {
+        int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_MOVE) {
+            float dx = event.getX();
+            float dy = event.getY();
+            int w = controlLayout.getWidth();
+            int h = controlLayout.getHeight();
+            if (w > 0 && h > 0) {
+                GLFW.cursorX += dx / w;
+                GLFW.cursorY += dy / h;
+                GLFW.sendMousePos();
+            }
+            return true;
+        }
+        if (action == MotionEvent.ACTION_BUTTON_PRESS || action == MotionEvent.ACTION_BUTTON_RELEASE) {
+            int state = (action == MotionEvent.ACTION_BUTTON_PRESS) ? KeyCodes.GLFW_PRESS : KeyCodes.GLFW_RELEASE;
+            int androidButton = event.getActionButton();
+            int glfwButton = -1;
+            if (androidButton == MotionEvent.BUTTON_PRIMARY)        glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_LEFT;
+            else if (androidButton == MotionEvent.BUTTON_SECONDARY) glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_RIGHT;
+            else if (androidButton == MotionEvent.BUTTON_TERTIARY)  glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_MIDDLE;
+            if (glfwButton >= 0) {
+                GLFW.sendMouseEvent(glfwButton, state, 0);
+                return true;
+            }
+        }
+        if (action == MotionEvent.ACTION_SCROLL) {
+            GLFW.sendScrollEvent(
+                event.getAxisValue(MotionEvent.AXIS_HSCROLL),
+                event.getAxisValue(MotionEvent.AXIS_VSCROLL));
+            return true;
+        }
+        return false;
+    }
 
     @Override
     public boolean onGenericMotionEvent(MotionEvent event) {
