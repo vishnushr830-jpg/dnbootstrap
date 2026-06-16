@@ -11,7 +11,6 @@
         android:theme="@style/AppTheme"
         android:manageSpaceActivity=".ManageDataActivity">
 
-
         <activity android:name=".AssetsCheckActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -20,8 +19,10 @@
         </activity>
 
         <activity android:name=".MainActivity" android:exported="true"
-            android:configChanges="orientation|keyboardHidden"
-            android:screenOrientation="sensorLandscape">
+            android:configChanges="orientation|keyboardHidden|keyboard|navigation"
+            android:screenOrientation="sensorLandscape"
+            android:immersive="true"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustNothing">
         </activity>
 
         <activity android:name=".ManageDataActivity" android:exported="true"/>
