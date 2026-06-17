@@ -7,6 +7,7 @@ import android.app.Activity;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.InputDevice;
+import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -53,13 +54,13 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // FIX 1: Hide status bar and navigation bar so mouse moving up won't reveal them
         hideSystemUI();
 
         surfaceView = findViewById(R.id.surface_view);
         touchCharInput = findViewById(R.id.touch_char_input);
         controlLayout = findViewById(R.id.control_layout);
         InsetUtils.setInsetsMode(this, true, false);
+
         // Hide cursor on all views
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             PointerIcon nullIcon = PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL);
@@ -68,11 +69,14 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         }
         surfaceView.getHolder().addCallback(new NativeSurfaceListener());
 
-        // Disable TouchCharInput if physical keyboard is already connected
+        // FIX: Only disable TouchCharInput if a REAL physical keyboard is connected.
+        // The old isPhysicalKeyboardConnected() was incorrectly matching Gboard/IMEs,
+        // causing TouchCharInput to be permanently disabled and breaking the Kbd button.
         if (TouchCharInput.isPhysicalKeyboardConnected()) {
             touchCharInput.setPhysicalKeyboardConnected(true);
         }
-        // Lock mouse to app - hides system cursor and prevents system gestures
+
+        // Lock mouse to app
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             surfaceView.setOnCapturedPointerListener(capturedPointerListener);
         }
@@ -94,7 +98,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         }
     }
 
-    // Re-request pointer capture when app resumes
     @Override
     protected void onResume() {
         super.onResume();
@@ -105,16 +108,13 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     @Override
     public void onPointerCaptureChanged(boolean hasCapture) {
         super.onPointerCaptureChanged(hasCapture);
-        // If we lost capture, re-request it
         if (!hasCapture && surfaceView != null) {
             surfaceView.requestPointerCapture();
         }
     }
 
-    // FIX 1: Method to hide status bar and navigation bar
     private void hideSystemUI() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Modern way for Android 11+
             getWindow().setDecorFitsSystemWindows(false);
             if (getWindow().getInsetsController() != null) {
                 getWindow().getInsetsController().hide(
@@ -126,7 +126,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                 );
             }
         } else {
-            // Old way for Android 10 and below
             getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_FULLSCREEN |
                 View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
@@ -138,7 +137,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         }
     }
 
-    // FIX 1: Re-hide the status bar if Android brings it back
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
@@ -161,15 +159,9 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             }
 
             int glfwKey = androidToGlfw(keyCode);
-            if (glfwKey > 0) {  // Only send valid GLFW keys (> 0)
+            if (glfwKey > 0) {
                 int action = event.getAction();
-                int state;
-                if (action == KeyEvent.ACTION_DOWN) {
-                    // Don't send repeat state (2) - custom GLFW may not support it
-                    state = KeyCodes.GLFW_PRESS;
-                } else {
-                    state = KeyCodes.GLFW_RELEASE;
-                }
+                int state = (action == KeyEvent.ACTION_DOWN) ? KeyCodes.GLFW_PRESS : KeyCodes.GLFW_RELEASE;
                 try {
                     GLFW.sendKeyEvent(glfwKey, state, getGLFWMods(event));
                 } catch (Exception e) {
@@ -246,14 +238,14 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             case KeyEvent.KEYCODE_F11: return KeyCodes.GLFW_KEY_F11;
             case KeyEvent.KEYCODE_F12: return KeyCodes.GLFW_KEY_F12;
             // Special keys
-            case KeyEvent.KEYCODE_ESCAPE:    return KeyCodes.GLFW_KEY_ESCAPE;
-            case KeyEvent.KEYCODE_ENTER:     return KeyCodes.GLFW_KEY_ENTER;
-            case KeyEvent.KEYCODE_TAB:       return KeyCodes.GLFW_KEY_TAB;
-            case KeyEvent.KEYCODE_DEL:       return KeyCodes.GLFW_KEY_BACKSPACE;
+            case KeyEvent.KEYCODE_ESCAPE:      return KeyCodes.GLFW_KEY_ESCAPE;
+            case KeyEvent.KEYCODE_ENTER:       return KeyCodes.GLFW_KEY_ENTER;
+            case KeyEvent.KEYCODE_TAB:         return KeyCodes.GLFW_KEY_TAB;
+            case KeyEvent.KEYCODE_DEL:         return KeyCodes.GLFW_KEY_BACKSPACE;
             case KeyEvent.KEYCODE_FORWARD_DEL: return KeyCodes.GLFW_KEY_DELETE;
-            case KeyEvent.KEYCODE_INSERT:    return KeyCodes.GLFW_KEY_INSERT;
-            case KeyEvent.KEYCODE_SPACE:     return KeyCodes.GLFW_KEY_SPACE;
-            case KeyEvent.KEYCODE_CAPS_LOCK: return KeyCodes.GLFW_KEY_CAPS_LOCK;
+            case KeyEvent.KEYCODE_INSERT:      return KeyCodes.GLFW_KEY_INSERT;
+            case KeyEvent.KEYCODE_SPACE:       return KeyCodes.GLFW_KEY_SPACE;
+            case KeyEvent.KEYCODE_CAPS_LOCK:   return KeyCodes.GLFW_KEY_CAPS_LOCK;
             // Arrow keys
             case KeyEvent.KEYCODE_DPAD_UP:    return KeyCodes.GLFW_KEY_UP;
             case KeyEvent.KEYCODE_DPAD_DOWN:  return KeyCodes.GLFW_KEY_DOWN;
@@ -274,28 +266,28 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             case KeyEvent.KEYCODE_META_LEFT:    return KeyCodes.GLFW_KEY_LEFT_SUPER;
             case KeyEvent.KEYCODE_META_RIGHT:   return KeyCodes.GLFW_KEY_RIGHT_SUPER;
             // Punctuation
-            case KeyEvent.KEYCODE_COMMA:        return KeyCodes.GLFW_KEY_COMMA;
-            case KeyEvent.KEYCODE_PERIOD:       return KeyCodes.GLFW_KEY_PERIOD;
-            case KeyEvent.KEYCODE_SLASH:        return KeyCodes.GLFW_KEY_SLASH;
-            case KeyEvent.KEYCODE_SEMICOLON:    return KeyCodes.GLFW_KEY_SEMICOLON;
-            case KeyEvent.KEYCODE_APOSTROPHE:   return KeyCodes.GLFW_KEY_APOSTROPHE;
-            case KeyEvent.KEYCODE_LEFT_BRACKET: return KeyCodes.GLFW_KEY_LEFT_BRACKET;
-            case KeyEvent.KEYCODE_RIGHT_BRACKET:return KeyCodes.GLFW_KEY_RIGHT_BRACKET;
-            case KeyEvent.KEYCODE_BACKSLASH:    return KeyCodes.GLFW_KEY_BACKSLASH;
-            case KeyEvent.KEYCODE_MINUS:        return KeyCodes.GLFW_KEY_MINUS;
-            case KeyEvent.KEYCODE_EQUALS:       return KeyCodes.GLFW_KEY_EQUAL;
-            case KeyEvent.KEYCODE_GRAVE:        return KeyCodes.GLFW_KEY_GRAVE_ACCENT;
+            case KeyEvent.KEYCODE_COMMA:         return KeyCodes.GLFW_KEY_COMMA;
+            case KeyEvent.KEYCODE_PERIOD:        return KeyCodes.GLFW_KEY_PERIOD;
+            case KeyEvent.KEYCODE_SLASH:         return KeyCodes.GLFW_KEY_SLASH;
+            case KeyEvent.KEYCODE_SEMICOLON:     return KeyCodes.GLFW_KEY_SEMICOLON;
+            case KeyEvent.KEYCODE_APOSTROPHE:    return KeyCodes.GLFW_KEY_APOSTROPHE;
+            case KeyEvent.KEYCODE_LEFT_BRACKET:  return KeyCodes.GLFW_KEY_LEFT_BRACKET;
+            case KeyEvent.KEYCODE_RIGHT_BRACKET: return KeyCodes.GLFW_KEY_RIGHT_BRACKET;
+            case KeyEvent.KEYCODE_BACKSLASH:     return KeyCodes.GLFW_KEY_BACKSLASH;
+            case KeyEvent.KEYCODE_MINUS:         return KeyCodes.GLFW_KEY_MINUS;
+            case KeyEvent.KEYCODE_EQUALS:        return KeyCodes.GLFW_KEY_EQUAL;
+            case KeyEvent.KEYCODE_GRAVE:         return KeyCodes.GLFW_KEY_GRAVE_ACCENT;
             // Numpad
-            case KeyEvent.KEYCODE_NUMPAD_0: return KeyCodes.GLFW_KEY_KP_0;
-            case KeyEvent.KEYCODE_NUMPAD_1: return KeyCodes.GLFW_KEY_KP_1;
-            case KeyEvent.KEYCODE_NUMPAD_2: return KeyCodes.GLFW_KEY_KP_2;
-            case KeyEvent.KEYCODE_NUMPAD_3: return KeyCodes.GLFW_KEY_KP_3;
-            case KeyEvent.KEYCODE_NUMPAD_4: return KeyCodes.GLFW_KEY_KP_4;
-            case KeyEvent.KEYCODE_NUMPAD_5: return KeyCodes.GLFW_KEY_KP_5;
-            case KeyEvent.KEYCODE_NUMPAD_6: return KeyCodes.GLFW_KEY_KP_6;
-            case KeyEvent.KEYCODE_NUMPAD_7: return KeyCodes.GLFW_KEY_KP_7;
-            case KeyEvent.KEYCODE_NUMPAD_8: return KeyCodes.GLFW_KEY_KP_8;
-            case KeyEvent.KEYCODE_NUMPAD_9: return KeyCodes.GLFW_KEY_KP_9;
+            case KeyEvent.KEYCODE_NUMPAD_0:        return KeyCodes.GLFW_KEY_KP_0;
+            case KeyEvent.KEYCODE_NUMPAD_1:        return KeyCodes.GLFW_KEY_KP_1;
+            case KeyEvent.KEYCODE_NUMPAD_2:        return KeyCodes.GLFW_KEY_KP_2;
+            case KeyEvent.KEYCODE_NUMPAD_3:        return KeyCodes.GLFW_KEY_KP_3;
+            case KeyEvent.KEYCODE_NUMPAD_4:        return KeyCodes.GLFW_KEY_KP_4;
+            case KeyEvent.KEYCODE_NUMPAD_5:        return KeyCodes.GLFW_KEY_KP_5;
+            case KeyEvent.KEYCODE_NUMPAD_6:        return KeyCodes.GLFW_KEY_KP_6;
+            case KeyEvent.KEYCODE_NUMPAD_7:        return KeyCodes.GLFW_KEY_KP_7;
+            case KeyEvent.KEYCODE_NUMPAD_8:        return KeyCodes.GLFW_KEY_KP_8;
+            case KeyEvent.KEYCODE_NUMPAD_9:        return KeyCodes.GLFW_KEY_KP_9;
             case KeyEvent.KEYCODE_NUMPAD_DOT:      return KeyCodes.GLFW_KEY_KP_DECIMAL;
             case KeyEvent.KEYCODE_NUMPAD_DIVIDE:   return KeyCodes.GLFW_KEY_KP_DIVIDE;
             case KeyEvent.KEYCODE_NUMPAD_MULTIPLY: return KeyCodes.GLFW_KEY_KP_MULTIPLY;
@@ -308,7 +300,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     // ─── Physical Mouse ───────────────────────────────────────────────────────
 
-    // Captured pointer listener set on surfaceView
     private final View.OnCapturedPointerListener capturedPointerListener = (v, event) -> {
         int action = event.getActionMasked();
         if (action == MotionEvent.ACTION_MOVE) {
@@ -408,15 +399,20 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    // FIX 2: Better Gboard detection - virtual keyboards have deviceId of -1 or 0
+    /**
+     * FIX: Use KeyCharacterMap.VIRTUAL_KEYBOARD (-1) to reliably detect IME/Gboard events.
+     * The old check (deviceId == -1 || deviceId == 0) missed some Gboard events and
+     * could incorrectly exclude real hardware keyboards with id=0 on some devices.
+     */
     private boolean isPhysicalKeyboard(KeyEvent event) {
+        // KeyCharacterMap.VIRTUAL_KEYBOARD is the device ID used by all IMEs (Gboard etc.)
+        if (event.getDeviceId() == KeyCharacterMap.VIRTUAL_KEYBOARD) return false;
         InputDevice device = InputDevice.getDevice(event.getDeviceId());
         if (device == null) return false;
         int sources = device.getSources();
         boolean hasKeyboard = (sources & InputDevice.SOURCE_KEYBOARD) != 0;
         boolean hasTouchscreen = (sources & InputDevice.SOURCE_TOUCHSCREEN) != 0;
-        boolean isVirtual = event.getDeviceId() == -1 || event.getDeviceId() == 0;
-        return hasKeyboard && !hasTouchscreen && !isVirtual;
+        return hasKeyboard && !hasTouchscreen;
     }
 
     private boolean isMouseEvent(MotionEvent event) {
