@@ -77,9 +77,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             surfaceView.setOnCapturedPointerListener(capturedPointerListener);
         }
-        
-        // FIX: Removed early requestPointerCapture() from onCreate because the window 
-        // token is not yet active here. It is now safely handled inside onWindowFocusChanged.
 
         // Hide system mouse cursor
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -101,7 +98,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     protected void onResume() {
         super.onResume();
         hideSystemUI();
-        // FIX: Ensure view requests focus before capturing pointer layout
         if (surfaceView != null) {
             surfaceView.requestFocus();
             surfaceView.requestPointerCapture();
@@ -111,7 +107,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     @Override
     public void onPointerCaptureChanged(boolean hasCapture) {
         super.onPointerCaptureChanged(hasCapture);
-        // FIX: Re-request focus alongside pointer capture to maintain alignment
         if (!hasCapture && surfaceView != null) {
             surfaceView.requestFocus();
             surfaceView.requestPointerCapture();
@@ -147,7 +142,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             hideSystemUI();
-            // FIX: Safely trigger pointer capture once the window layout is completely drawn
             if (surfaceView != null) {
                 surfaceView.postDelayed(() -> {
                     if (surfaceView != null) {
@@ -179,7 +173,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                 int state = (action == KeyEvent.ACTION_DOWN) ? KeyCodes.GLFW_PRESS : KeyCodes.GLFW_RELEASE;
                 try {
                     GLFW.sendKeyEvent(glfwKey, state, getGLFWMods(event));
-                } catch (Exception e) {
+                } catch (Throwable t) {
                     // Ignore unhandled keys
                 }
             }
@@ -195,7 +189,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         View focus = getCurrentFocus();
         if (focus != null) imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
         
-        // FIX: Give focus back to game surface when soft keyboard is dismissed
         if (surfaceView != null) {
             surfaceView.requestFocus();
             surfaceView.requestPointerCapture();
@@ -321,7 +314,9 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             if (w > 0 && h > 0) {
                 GLFW.cursorX += dx / w;
                 GLFW.cursorY += dy / h;
-                GLFW.sendMousePos();
+                try {
+                    GLFW.sendMousePos();
+                } catch (Throwable t) { /* Ignore native crashes */ }
             }
             return true;
         }
@@ -329,18 +324,28 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             int state = (action == MotionEvent.ACTION_BUTTON_PRESS) ? KeyCodes.GLFW_PRESS : KeyCodes.GLFW_RELEASE;
             int androidButton = event.getActionButton();
             int glfwButton = -1;
+            
             if (androidButton == MotionEvent.BUTTON_PRIMARY)        glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_LEFT;
             else if (androidButton == MotionEvent.BUTTON_SECONDARY) glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_RIGHT;
             else if (androidButton == MotionEvent.BUTTON_TERTIARY)  glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_MIDDLE;
+            
             if (glfwButton >= 0) {
-                GLFW.sendMouseEvent(glfwButton, state, 0);
+                try {
+                    GLFW.sendMouseEvent(glfwButton, state, 0);
+                } catch (Throwable t) {
+                    // Traps JNI exceptions if the C++ side doesn't support middle clicks
+                }
                 return true;
             }
         }
         if (action == MotionEvent.ACTION_SCROLL) {
-            GLFW.sendScrollEvent(
-                event.getAxisValue(MotionEvent.AXIS_HSCROLL),
-                event.getAxisValue(MotionEvent.AXIS_VSCROLL));
+            try {
+                GLFW.sendScrollEvent(
+                    event.getAxisValue(MotionEvent.AXIS_HSCROLL),
+                    event.getAxisValue(MotionEvent.AXIS_VSCROLL));
+            } catch (Throwable t) {
+                // Traps JNI exceptions if scroll handling is broken in native code
+            }
             return true;
         }
         return false;
@@ -368,7 +373,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                 if (w > 0 && h > 0) {
                     GLFW.cursorX += dx / w;
                     GLFW.cursorY += dy / h;
-                    GLFW.sendMousePos();
+                    try { GLFW.sendMousePos(); } catch (Throwable t) {}
                 }
             } else {
                 int w = controlLayout.getWidth();
@@ -376,7 +381,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                 if (w > 0 && h > 0) {
                     GLFW.cursorX = x / w;
                     GLFW.cursorY = y / h;
-                    GLFW.sendMousePos();
+                    try { GLFW.sendMousePos(); } catch (Throwable t) {}
                 }
             }
 
@@ -389,19 +394,25 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
             int state = (action == MotionEvent.ACTION_BUTTON_PRESS) ? KeyCodes.GLFW_PRESS : KeyCodes.GLFW_RELEASE;
             int androidButton = event.getActionButton();
             int glfwButton = -1;
+            
             if (androidButton == MotionEvent.BUTTON_PRIMARY)        glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_LEFT;
             else if (androidButton == MotionEvent.BUTTON_SECONDARY) glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_RIGHT;
             else if (androidButton == MotionEvent.BUTTON_TERTIARY)  glfwButton = MouseCodes.GLFW_MOUSE_BUTTON_MIDDLE;
+            
             if (glfwButton >= 0) {
-                GLFW.sendMouseEvent(glfwButton, state, 0);
+                try {
+                    GLFW.sendMouseEvent(glfwButton, state, 0);
+                } catch (Throwable t) {}
                 return true;
             }
         }
 
         if (action == MotionEvent.ACTION_SCROLL) {
-            GLFW.sendScrollEvent(
-                event.getAxisValue(MotionEvent.AXIS_HSCROLL),
-                event.getAxisValue(MotionEvent.AXIS_VSCROLL));
+            try {
+                GLFW.sendScrollEvent(
+                    event.getAxisValue(MotionEvent.AXIS_HSCROLL),
+                    event.getAxisValue(MotionEvent.AXIS_VSCROLL));
+            } catch (Throwable t) {}
             return true;
         }
 
@@ -410,7 +421,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    // FIX: Optimized keyboard checker to safely catch combined keyboard-mouse OTG dongles
     private boolean isPhysicalKeyboard(KeyEvent event) {
         int deviceId = event.getDeviceId();
         if (deviceId == KeyCharacterMap.VIRTUAL_KEYBOARD || deviceId == 0) {
@@ -424,8 +434,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         InputDevice device = InputDevice.getDevice(deviceId);
         if (device == null) return false;
         
-        // Removed strict `!hasTouchscreen` condition because many hardware USB/OTG keymaps 
-        // report secondary multi-touch capability profiles erroneously to the kernel.
         return (device.getSources() & InputDevice.SOURCE_KEYBOARD) != 0;
     }
 
@@ -447,7 +455,6 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
 
     @Override
     public void requestSoftInput() {
-        // FIX: Ensure hidden input view explicitly takes focus so Gboard attaches IME connections
         if (touchCharInput != null) {
             touchCharInput.setFocusable(true);
             touchCharInput.setFocusableInTouchMode(true);
