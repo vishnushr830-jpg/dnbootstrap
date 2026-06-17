@@ -167,14 +167,32 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                 return super.dispatchKeyEvent(event);
             }
 
+            int action = event.getAction();
+            int mods = getGLFWMods(event);
+
+            // 1. Send Raw Key Events (For Movement / WASD)
             int glfwKey = androidToGlfw(keyCode);
             if (glfwKey > 0) {
-                int action = event.getAction();
                 int state = (action == KeyEvent.ACTION_DOWN) ? KeyCodes.GLFW_PRESS : KeyCodes.GLFW_RELEASE;
                 try {
-                    GLFW.sendKeyEvent(glfwKey, state, getGLFWMods(event));
+                    GLFW.sendKeyEvent(glfwKey, state, mods);
                 } catch (Throwable t) {
                     // Ignore unhandled keys
+                }
+            }
+
+            // 2. Send Character Events (For Typing in Chat/Usernames)
+            if (action == KeyEvent.ACTION_DOWN) {
+                int unicodeChar = event.getUnicodeChar(event.getMetaState());
+                
+                // If it is a printable character, convert to String and send to bulk unicode method
+                if (unicodeChar > 0 && !Character.isISOControl(unicodeChar)) {
+                    String typedCharacter = String.valueOf((char) unicodeChar);
+                    try {
+                        GLFW.sendBulkUnicodeEvent(typedCharacter, mods);
+                    } catch (Throwable t) {
+                        // Ignore unhandled characters
+                    }
                 }
             }
 
@@ -333,7 +351,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                 try {
                     GLFW.sendMouseEvent(glfwButton, state, 0);
                 } catch (Throwable t) {
-                    // Traps JNI exceptions if the C++ side doesn't support middle clicks
+                    // Traps JNI exceptions
                 }
                 return true;
             }
@@ -344,7 +362,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
                     event.getAxisValue(MotionEvent.AXIS_HSCROLL),
                     event.getAxisValue(MotionEvent.AXIS_VSCROLL));
             } catch (Throwable t) {
-                // Traps JNI exceptions if scroll handling is broken in native code
+                // Traps JNI exceptions
             }
             return true;
         }
