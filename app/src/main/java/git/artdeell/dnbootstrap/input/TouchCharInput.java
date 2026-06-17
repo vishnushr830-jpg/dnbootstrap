@@ -7,6 +7,7 @@ import android.os.Build;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
+import android.view.KeyCharacterMap;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.inputmethod.InputMethodManager;
@@ -23,6 +24,7 @@ import git.artdeell.dnbootstrap.glfw.KeyCodes;
 public class TouchCharInput extends EditText {
     private static final String DEFAULT_CHARS = " ";
     private boolean keyboardRequestPending = false;
+
     public TouchCharInput(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         setText(DEFAULT_CHARS);
@@ -41,8 +43,7 @@ public class TouchCharInput extends EditText {
     protected void onSelectionChanged(int selStart, int selEnd) {
         super.onSelectionChanged(selStart, selEnd);
         int textLength = getText().length();
-        // Only allow selections that end at the end of the text that was put in
-        if(selEnd == textLength) return;
+        if (selEnd == textLength) return;
         setSelection(textLength);
     }
 
@@ -50,8 +51,8 @@ public class TouchCharInput extends EditText {
         int oldSegLength = oldSegment.length();
         int newSegLength = newSegment.length();
         int lastChange;
-        for(lastChange = 0; lastChange < Math.min(oldSegLength, newSegLength); lastChange++) {
-            if(oldSegment.charAt(lastChange) != newSegment.charAt(lastChange)) break;
+        for (lastChange = 0; lastChange < Math.min(oldSegLength, newSegLength); lastChange++) {
+            if (oldSegment.charAt(lastChange) != newSegment.charAt(lastChange)) break;
         }
         int deleteChars = oldSegLength - lastChange;
         String addChars = newSegment.substring(lastChange);
@@ -59,7 +60,7 @@ public class TouchCharInput extends EditText {
     }
 
     private void sendChanges(int charsRemoved, String charsAdded) {
-        for(;charsRemoved > 0;charsRemoved--) {
+        for (; charsRemoved > 0; charsRemoved--) {
             GLFW.sendKeyEvent(KeyCodes.GLFW_KEY_BACKSPACE, 1, 0);
             GLFW.sendKeyEvent(KeyCodes.GLFW_KEY_BACKSPACE, 0, 0);
         }
@@ -81,21 +82,33 @@ public class TouchCharInput extends EditText {
         }
     }
 
+    /**
+     * FIX: Properly detect only real physical keyboards, not IMEs (Gboard etc.).
+     *
+     * The old version only checked SOURCE_KEYBOARD and SOURCE_TOUCHSCREEN, but
+     * virtual IME devices (like Gboard) also report SOURCE_KEYBOARD, causing
+     * this method to return true even without any physical keyboard plugged in.
+     *
+     * The fix: skip devices whose ID is KeyCharacterMap.VIRTUAL_KEYBOARD (-1),
+     * which is the ID Android assigns to all software IMEs. This ensures we only
+     * detect genuinely physical keyboards.
+     */
     public static boolean isPhysicalKeyboardConnected() {
         for (int id : InputDevice.getDeviceIds()) {
+            // KeyCharacterMap.VIRTUAL_KEYBOARD (-1) is used by IMEs — skip them
+            if (id == KeyCharacterMap.VIRTUAL_KEYBOARD) continue;
             InputDevice device = InputDevice.getDevice(id);
             if (device == null) continue;
             int sources = device.getSources();
-            if ((sources & InputDevice.SOURCE_KEYBOARD) != 0
-                && (sources & InputDevice.SOURCE_TOUCHSCREEN) == 0) {
-                return true;
-            }
+            boolean isKeyboard = (sources & InputDevice.SOURCE_KEYBOARD) != 0;
+            boolean isTouchscreen = (sources & InputDevice.SOURCE_TOUCHSCREEN) != 0;
+            if (isKeyboard && !isTouchscreen) return true;
         }
         return false;
     }
 
     public void requestKeyboard() {
-        if(isFocused()) requestShowIme();
+        if (isFocused()) requestShowIme();
         else {
             keyboardRequestPending = true;
             requestFocus();
@@ -104,11 +117,11 @@ public class TouchCharInput extends EditText {
 
     private void requestShowIme() {
         keyboardRequestPending = false;
-        if(Build.VERSION.SDK_INT >= 30) {
+        if (Build.VERSION.SDK_INT >= 30) {
             WindowInsetsController controller = getWindowInsetsController();
-            if(controller == null) return;
+            if (controller == null) return;
             controller.show(WindowInsets.Type.ime());
-        }else {
+        } else {
             InputMethodManager inputMethodManager = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             inputMethodManager.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT);
         }
@@ -117,7 +130,7 @@ public class TouchCharInput extends EditText {
     @Override
     protected void onFocusChanged(boolean focused, int direction, Rect previouslyFocusedRect) {
         super.onFocusChanged(focused, direction, previouslyFocusedRect);
-        if(keyboardRequestPending && focused) requestShowIme();
+        if (keyboardRequestPending && focused) requestShowIme();
     }
 
     @Override
@@ -131,7 +144,7 @@ public class TouchCharInput extends EditText {
 
         @Override
         public void afterTextChanged(Editable editable) {
-            if(editable.length() < DEFAULT_CHARS.length()) {
+            if (editable.length() < DEFAULT_CHARS.length()) {
                 internalChanges = true;
                 editable.insert(0, DEFAULT_CHARS);
                 internalChanges = false;
@@ -140,21 +153,21 @@ public class TouchCharInput extends EditText {
 
         @Override
         public void beforeTextChanged(CharSequence charSequence, int start, int count, int after) {
-            if(internalChanges) return;
+            if (internalChanges) return;
             lastSegment = charSequence.subSequence(start, start + count);
         }
 
         @Override
         public void onTextChanged(CharSequence charSequence, int start, int lengthBefore, int lengthAfter) {
-            if(internalChanges) return;
+            if (internalChanges) return;
             assert lastSegment.length() == lengthBefore;
             assert start + lengthAfter == charSequence.length();
             String segment = charSequence.toString().substring(start, start + lengthAfter);
-            if(lengthBefore == 0) {
+            if (lengthBefore == 0) {
                 sendChanges(0, segment);
                 return;
             }
-            if(lengthAfter == 0) {
+            if (lengthAfter == 0) {
                 sendChanges(lengthBefore, "");
                 return;
             }
