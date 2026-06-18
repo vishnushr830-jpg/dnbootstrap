@@ -2,9 +2,9 @@ name: Android CI
 
 on:
   push:
-    branches: [ "master", "Working-keyboard" ]
+    branches: [ "master", "Working-keyboard", "Managedatafix" ]
   pull_request:
-    branches: [ "master", "Working-keyboard" ]
+    branches: [ "master", "Working-keyboard", "Managedatafix" ]
 
 jobs:
   build:
