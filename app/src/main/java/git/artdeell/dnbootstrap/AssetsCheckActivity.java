@@ -23,25 +23,54 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
     private Button selectButton;
     private TextView assetsMessage;
     private ActivityResultLauncher<String> selectGameLauncher;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         AppDirs appDirs = new AppDirs(getFilesDir());
-        if(appDirs.isFullyInstalled()) {
-            exit();
+
+        if (appDirs.isFullyInstalled()) {
+            // Game is installed — show launch menu instead of jumping straight in
+            showLaunchMenu();
             return;
         }
+
         setContentView(R.layout.activity_assets_check);
         extractionProgress = findViewById(R.id.extraction_progress);
         selectButton = findViewById(R.id.select_game_data_btn);
         assetsMessage = findViewById(R.id.assets_message);
-        if(extractorTask != null) {
+
+        if (extractorTask != null) {
             connectExtractionTask();
-        }else if(appDirs.isGameInstalled()) {
+        } else if (appDirs.isGameInstalled()) {
             componentsOnlyExtract();
-        }else {
-            selectGameLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), this::fullExtract);
-            selectButton.setOnClickListener((v)-> selectGameLauncher.launch("application/gzip"));
+        } else {
+            selectGameLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(), this::fullExtract);
+            selectButton.setOnClickListener((v) -> selectGameLauncher.launch("application/gzip"));
+        }
+    }
+
+    private void showLaunchMenu() {
+        setContentView(R.layout.activity_launch_menu);
+
+        Button startButton = findViewById(R.id.btn_start_game);
+        Button settingsButton = findViewById(R.id.btn_settings);
+
+        startButton.setOnClickListener(v -> startGame());
+        settingsButton.setOnClickListener(v -> {
+            Intent intent = new Intent(this, ManageDataActivity.class);
+            startActivity(intent);
+        });
+    }
+
+    private void startGame() {
+        Intent intent = new Intent(this, MainActivity.class);
+        startActivity(intent);
+        finish();
+        if (extractorTask != null) {
+            extractorTask.setCallback(null);
+            extractorTask = null;
         }
     }
 
@@ -67,20 +96,15 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
     }
 
     private void exit() {
-        Intent intent = new Intent(this, MainActivity.class);
-        startActivity(intent);
-        finish();
-        if(extractorTask != null) {
-            extractorTask.setCallback(null);
-            extractorTask = null;
-        }
+        startGame();
     }
 
     @Override
     public void onProgressChanged() {
-        runOnUiThread(()->{
-            extractionProgress.setProgress((int) (extractorTask.getProgress() * extractionProgress.getMax()));
-            if(extractorTask.progressComplete()) exit();
+        runOnUiThread(() -> {
+            extractionProgress.setProgress(
+                (int) (extractorTask.getProgress() * extractionProgress.getMax()));
+            if (extractorTask.progressComplete()) exit();
         });
     }
 }
