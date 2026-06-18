@@ -22,10 +22,19 @@
             android:configChanges="orientation|keyboardHidden|keyboard|navigation"
             android:screenOrientation="sensorLandscape"
             android:immersive="true"
-            android:windowSoftInputMode="stateAlwaysHidden|adjustNothing">
+            android:windowSoftInputMode="stateHidden|adjustNothing">
         </activity>
 
-        <activity android:name=".ManageDataActivity" android:exported="true"/>
+        <!-- FIX: Added exported=true and the intent-filter so Android recognizes
+             this as a valid manageSpaceActivity and enables the button in App Info -->
+        <activity android:name=".ManageDataActivity"
+            android:exported="true"
+            android:label="Manage Data">
+            <intent-filter>
+                <action android:name="android.intent.action.MANAGE_PACKAGE_STORAGE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
 
         <provider
             android:name=".io.FolderProvider"
