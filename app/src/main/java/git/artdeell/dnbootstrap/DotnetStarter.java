@@ -31,6 +31,10 @@ public class DotnetStarter {
             Os.setenv("FONTCONFIG_PATH", appDirs.fontconfig.getAbsolutePath(), true);
             Os.setenv("SSL_CERT_DIR", certsDir.getAbsolutePath(), true);
             Os.setenv("LIBGL_NOERROR", "1", true);
+            
+            // FIX: Forces the .NET runtime to continuously clean up allocated texture and heap memory fragments
+            Os.setenv("MONO_GC_PARAMS", "nursery-size=4m,soft-heap-limit=512m", true);
+            
             //Os.setenv("LIBGL_EGL", "libEGL_angle.so", true);
         } catch (Exception e) {
             throw new RuntimeException(e);
