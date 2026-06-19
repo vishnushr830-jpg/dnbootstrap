@@ -522,4 +522,14 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     }
 
     public static native void runDotnet(String dotnetRoot, String vsDir);
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        
+    // Forcefully kills the entire process and native C++ memory loop
+        android.os.Process.killProcess(android.os.Process.myPid());
+        System.exit(0);
+    }
+    
 }
