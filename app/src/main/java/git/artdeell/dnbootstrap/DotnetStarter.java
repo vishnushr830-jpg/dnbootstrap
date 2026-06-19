@@ -30,10 +30,12 @@ public class DotnetStarter {
             Os.setenv("HOME", homeDir.getAbsolutePath(), true);
             Os.setenv("FONTCONFIG_PATH", appDirs.fontconfig.getAbsolutePath(), true);
             Os.setenv("SSL_CERT_DIR", certsDir.getAbsolutePath(), true);
-            Os.setenv("LIBGL_NOERROR", "1", true);
             
-            // FIX: Uses true background concurrent marking and expands the nursery to 64MB to clear chunk generation stutters
-            Os.setenv("MONO_GC_PARAMS", "major=marksweep-conc,nursery-size=64m", true);
+            // FIX 1: Set to 0 so the driver doesn't silently corrupt or drop texture bindings under heavy loads
+            Os.setenv("LIBGL_NOERROR", "0", true);
+            
+            // FIX 2: Upgrades to Parallel Concurrent SGen to use multi-threading for cleanup, dropping the 5-sec stutters
+            Os.setenv("MONO_GC_PARAMS", "major=marksweep-conc-par,nursery-size=64m,mode=pause:20", true);
             
             //Os.setenv("LIBGL_EGL", "libEGL_angle.so", true);
         } catch (Exception e) {
