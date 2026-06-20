@@ -31,11 +31,11 @@ public class DotnetStarter {
             Os.setenv("FONTCONFIG_PATH", appDirs.fontconfig.getAbsolutePath(), true);
             Os.setenv("SSL_CERT_DIR", certsDir.getAbsolutePath(), true);
             
-            // Keep the stable error reporting
+            // Keep error reporting active to prevent silent corruption loops
             Os.setenv("LIBGL_NOERROR", "0", true);
 
-            // Anchored, non-evacuating parallel GC parameters
-            Os.setenv("MONO_GC_PARAMS", "major=marksweep-conc-par,nursery-size=64m,evacuation-threshold=0,soft-heap-limit=1536m,mode=pause:20", true);
+            // SKILLFUL REFINEMENT: Smaller nursery and soft-limit to force rapid recycling when moving through chunks
+            Os.setenv("MONO_GC_PARAMS", "major=marksweep-conc-par,nursery-size=32m,evacuation-threshold=0,soft-heap-limit=768m,mode=pause:20", true);
             
             //Os.setenv("LIBGL_EGL", "libEGL_angle.so", true);
         } catch (Exception e) {
