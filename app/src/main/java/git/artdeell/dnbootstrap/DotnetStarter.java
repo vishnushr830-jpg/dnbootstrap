@@ -31,11 +31,11 @@ public class DotnetStarter {
             Os.setenv("FONTCONFIG_PATH", appDirs.fontconfig.getAbsolutePath(), true);
             Os.setenv("SSL_CERT_DIR", certsDir.getAbsolutePath(), true);
             
-            // Keep error reporting active to prevent silent corruption loops
+            // Keep error reporting active to track driver stability
             Os.setenv("LIBGL_NOERROR", "0", true);
 
-            // THE SWEET SPOT: 64MB nursery to kill the 9-second freezes + 1024MB heap ceiling to protect the GPU
-            Os.setenv("MONO_GC_PARAMS", "major=marksweep-conc-par,nursery-size=64m,evacuation-threshold=0,soft-heap-limit=1024m,mode=pause:20", true);
+            // REGULATED EQUILIBRIUM: 896m keeps textures safe, pause:8 protects cursor frame rates
+            Os.setenv("MONO_GC_PARAMS", "major=marksweep-conc-par,nursery-size=64m,evacuation-threshold=0,soft-heap-limit=896m,mode=pause:8", true);
             
             //Os.setenv("LIBGL_EGL", "libEGL_angle.so", true);
         } catch (Exception e) {
