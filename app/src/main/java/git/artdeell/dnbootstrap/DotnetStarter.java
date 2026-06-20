@@ -34,8 +34,8 @@ public class DotnetStarter {
             // Keep error reporting active to prevent silent corruption loops
             Os.setenv("LIBGL_NOERROR", "0", true);
 
-            // SKILLFUL REFINEMENT: Smaller nursery and soft-limit to force rapid recycling when moving through chunks
-            Os.setenv("MONO_GC_PARAMS", "major=marksweep-conc-par,nursery-size=32m,evacuation-threshold=0,soft-heap-limit=768m,mode=pause:20", true);
+            // THE SWEET SPOT: 64MB nursery to kill the 9-second freezes + 1024MB heap ceiling to protect the GPU
+            Os.setenv("MONO_GC_PARAMS", "major=marksweep-conc-par,nursery-size=64m,evacuation-threshold=0,soft-heap-limit=1024m,mode=pause:20", true);
             
             //Os.setenv("LIBGL_EGL", "libEGL_angle.so", true);
         } catch (Exception e) {
