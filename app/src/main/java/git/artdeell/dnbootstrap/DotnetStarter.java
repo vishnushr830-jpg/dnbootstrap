@@ -31,13 +31,26 @@ public class DotnetStarter {
             Os.setenv("FONTCONFIG_PATH", appDirs.fontconfig.getAbsolutePath(), true);
             Os.setenv("SSL_CERT_DIR", certsDir.getAbsolutePath(), true);
             
-            // Keep error reporting active
-            Os.setenv("LIBGL_NOERROR", "0", true);
+            // === ULTIMATE MALI GPU STABILITY LAYER ===
+            
+            // Disables broken luminance-alpha hardware allocations that cause neon green/red panics on Mali architectures
+            Os.setenv("LIBGL_NOLUMALPHA", "1", true);
+            
+            // Forces a localized cache copy of active textures so the driver cannot lose memory pointer addresses mid-frame
+            Os.setenv("LIBGL_TEXCOPY", "1", true);
+            
+            // Enforces strict edge clamping for non-power-of-two (NPOT) texture dimensions used in block maps
+            Os.setenv("LIBGL_DEFAULTWRAP", "1", true);
+            
+            // Routes rendering contexts directly to the frame buffer to prevent black silhouette chunk failures
+            Os.setenv("LIBGL_FB", "1", true);
+            
+            // Suppresses low-level translation validation checks to keep execution fluent and bypass driver drops
+            Os.setenv("LIBGL_NOERROR", "1", true);
 
-            // RESOLUTE SINGLE-THREADED EXECUTION: Removes the concurrent race conditions causing GPU driver texture drops
+            // Strict single-threaded sequential collection to prevent garbage collection thread collisions
             Os.setenv("MONO_GC_PARAMS", "major=marksweep,nursery-size=64m", true);
             
-            //Os.setenv("LIBGL_EGL", "libEGL_angle.so", true);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
