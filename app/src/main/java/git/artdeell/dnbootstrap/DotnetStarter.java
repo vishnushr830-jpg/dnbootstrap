@@ -31,11 +31,11 @@ public class DotnetStarter {
             Os.setenv("FONTCONFIG_PATH", appDirs.fontconfig.getAbsolutePath(), true);
             Os.setenv("SSL_CERT_DIR", certsDir.getAbsolutePath(), true);
             
-            // Keep error reporting active
+            // Keep error reporting active to maintain driver discipline
             Os.setenv("LIBGL_NOERROR", "0", true);
 
-            // RESTORING HARMONY: Single background worker thread + expanded 128MB nursery to eliminate input stutter
-            Os.setenv("MONO_GC_PARAMS", "major=marksweep-conc,nursery-size=128m,soft-heap-limit=768m", true);
+            // SĀTTVIKA ALIGNMENT: 16m nursery restores fluid cursor FPS, throughput stops heavy freezes, 768m protects GPU
+            Os.setenv("MONO_GC_PARAMS", "major=marksweep-conc,nursery-size=16m,evacuation-threshold=0,soft-heap-limit=768m,mode=throughput", true);
             
             //Os.setenv("LIBGL_EGL", "libEGL_angle.so", true);
         } catch (Exception e) {
