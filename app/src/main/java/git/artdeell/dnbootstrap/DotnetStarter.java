@@ -31,10 +31,6 @@ public class DotnetStarter {
             Os.setenv("FONTCONFIG_PATH", appDirs.fontconfig.getAbsolutePath(), true);
             Os.setenv("SSL_CERT_DIR", certsDir.getAbsolutePath(), true);
             Os.setenv("LIBGL_NOERROR", "1", true);
-            
-            // FIX: Enables background concurrent GC to stop chunk-loading stutters, increases nursery allocation space, and relaxes the heap limit
-            Os.setenv("MONO_GC_PARAMS", "major=concurrent,nursery-size=16m,soft-heap-limit=1024m", true);
-            
             //Os.setenv("LIBGL_EGL", "libEGL_angle.so", true);
         } catch (Exception e) {
             throw new RuntimeException(e);
