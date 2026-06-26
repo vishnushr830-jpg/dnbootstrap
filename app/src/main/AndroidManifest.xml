@@ -25,8 +25,6 @@
             android:windowSoftInputMode="stateHidden|adjustNothing">
         </activity>
 
-        <!-- FIX: Added exported=true and the intent-filter so Android recognizes
-             this as a valid manageSpaceActivity and enables the button in App Info -->
         <activity android:name=".ManageDataActivity"
             android:exported="true"
             android:label="Manage Data">
@@ -35,6 +33,11 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- Log Viewer -->
+        <activity android:name=".LogViewerActivity"
+            android:exported="false"
+            android:label="Game Logs"/>
 
         <provider
             android:name=".io.FolderProvider"
