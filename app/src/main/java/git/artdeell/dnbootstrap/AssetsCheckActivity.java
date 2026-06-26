@@ -30,7 +30,6 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         AppDirs appDirs = new AppDirs(getFilesDir());
 
         if (appDirs.isFullyInstalled()) {
-            // Game is installed — show launch menu instead of jumping straight in
             showLaunchMenu();
             return;
         }
@@ -56,10 +55,18 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
 
         Button startButton = findViewById(R.id.btn_start_game);
         Button settingsButton = findViewById(R.id.btn_settings);
+        Button logsButton = findViewById(R.id.btn_view_logs);  // NEW
 
         startButton.setOnClickListener(v -> startGame());
+
         settingsButton.setOnClickListener(v -> {
             Intent intent = new Intent(this, ManageDataActivity.class);
+            startActivity(intent);
+        });
+
+        // NEW — open log viewer
+        logsButton.setOnClickListener(v -> {
+            Intent intent = new Intent(this, LogViewerActivity.class);
             startActivity(intent);
         });
     }
