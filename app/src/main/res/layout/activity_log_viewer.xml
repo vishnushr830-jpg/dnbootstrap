@@ -8,7 +8,7 @@
     <!-- Spacer to account for status bar -->
     <View
         android:layout_width="match_parent"
-        android:layout_height="32dp"
+        android:layout_height="28dp"
         android:background="#1a1a1a"/>
 
     <!-- Buttons (fixed at top, below status bar) -->
@@ -16,7 +16,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="12dp"
         android:paddingStart="12dp"
         android:paddingEnd="12dp">
 
@@ -24,19 +24,21 @@
             android:id="@+id/btn_refresh"
             android:layout_width="0dp"
             android:layout_weight="1"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:text="Refresh"
             android:layout_marginEnd="4dp"
-            android:textSize="14sp"/>
+            android:textSize="14sp"
+            android:backgroundTint="#2196F3"/>
 
         <Button
             android:id="@+id/btn_share_log"
             android:layout_width="0dp"
             android:layout_weight="1"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:text="Share Log"
             android:layout_marginStart="4dp"
-            android:textSize="14sp"/>
+            android:textSize="14sp"
+            android:backgroundTint="#2196F3"/>
 
     </LinearLayout>
 
@@ -45,7 +47,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Game Logs"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="#ffffff"
         android:layout_marginBottom="12dp"
