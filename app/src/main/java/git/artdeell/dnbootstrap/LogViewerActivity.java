@@ -35,9 +35,6 @@ public class LogViewerActivity extends AppCompatActivity {
             refreshBtn = findViewById(R.id.btn_refresh);
             shareBtn = findViewById(R.id.btn_share_log);
 
-            if (refreshBtn == null) Log.e(TAG, "refresh button is NULL");
-            if (shareBtn == null) Log.e(TAG, "share button is NULL");
-
             loadLog();
 
             if (refreshBtn != null) {
@@ -56,7 +53,8 @@ public class LogViewerActivity extends AppCompatActivity {
         File logDir = new File(getFilesDir(), LOG_DIR);
 
         if (!logDir.exists()) {
-            logText.setText("No logs folder found yet.\nLaunch the game first.\n\nPath: " + logDir.getAbsolutePath());
+            logText.setText("No logs folder found yet.\nLaunch the game first.\n\nPath: "
+                + logDir.getAbsolutePath());
             return;
         }
 
@@ -69,6 +67,7 @@ public class LogViewerActivity extends AppCompatActivity {
             return;
         }
 
+        // Pick most recently modified log file
         File latestLog = logFiles[0];
         for (File f : logFiles) {
             if (f.lastModified() > latestLog.lastModified()) {
@@ -90,6 +89,7 @@ public class LogViewerActivity extends AppCompatActivity {
 
         logText.setText(sb.toString());
 
+        // Auto scroll to bottom
         if (scrollView != null) {
             scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_DOWN));
         }
