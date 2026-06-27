@@ -1,10 +1,11 @@
-package git.artdeell.dnbootstrap;
+package git.vishnushr830.dnbootstrap;
 
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -16,36 +17,49 @@ import java.io.IOException;
 public class LogViewerActivity extends AppCompatActivity {
 
     private static final String LOG_DIR = "home/.config/VintagestoryData/Logs";
+    private static final String TAG = "LogViewer";
 
     private TextView logText;
     private ScrollView scrollView;
+    private Button refreshBtn;
+    private Button shareBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_log_viewer);
 
-        logText = findViewById(R.id.log_text);
-        scrollView = findViewById(R.id.log_scroll);
+        try {
+            logText = findViewById(R.id.log_text);
+            scrollView = findViewById(R.id.log_scroll);
+            refreshBtn = findViewById(R.id.btn_refresh);
+            shareBtn = findViewById(R.id.btn_share_log);
 
-        Button refreshBtn = findViewById(R.id.btn_refresh);
-        Button shareBtn = findViewById(R.id.btn_share_log);
+            if (refreshBtn == null) Log.e(TAG, "refresh button is NULL");
+            if (shareBtn == null) Log.e(TAG, "share button is NULL");
 
-        loadLog();
+            loadLog();
 
-        refreshBtn.setOnClickListener(v -> loadLog());
-        shareBtn.setOnClickListener(v -> shareLog());
+            if (refreshBtn != null) {
+                refreshBtn.setOnClickListener(v -> loadLog());
+            }
+            if (shareBtn != null) {
+                shareBtn.setOnClickListener(v -> shareLog());
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onCreate", e);
+        }
     }
 
     private void loadLog() {
         File logDir = new File(getFilesDir(), LOG_DIR);
 
         if (!logDir.exists()) {
-            logText.setText("No logs folder found yet.\nLaunch the game first.");
+            logText.setText("No logs folder found yet.\nLaunch the game first.\n\nPath: " + logDir.getAbsolutePath());
             return;
         }
 
-        // Find the most recent .log file in the folder
         File[] logFiles = logDir.listFiles(
             (dir, name) -> name.endsWith(".log")
         );
@@ -55,7 +69,6 @@ public class LogViewerActivity extends AppCompatActivity {
             return;
         }
 
-        // Pick the most recently modified log file
         File latestLog = logFiles[0];
         for (File f : logFiles) {
             if (f.lastModified() > latestLog.lastModified()) {
@@ -63,7 +76,6 @@ public class LogViewerActivity extends AppCompatActivity {
             }
         }
 
-        // Read it
         StringBuilder sb = new StringBuilder();
         sb.append("File: ").append(latestLog.getName()).append("\n\n");
 
@@ -78,8 +90,9 @@ public class LogViewerActivity extends AppCompatActivity {
 
         logText.setText(sb.toString());
 
-        // Auto-scroll to bottom
-        scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_DOWN));
+        if (scrollView != null) {
+            scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_DOWN));
+        }
     }
 
     private void shareLog() {
