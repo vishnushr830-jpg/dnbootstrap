@@ -3,16 +3,22 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#1a1a1a"
-    android:padding="12dp"
-    android:paddingTop="48dp">
+    android:background="#1a1a1a">
+
+    <!-- Spacer to account for status bar -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="32dp"
+        android:background="#1a1a1a"/>
 
     <!-- Buttons (fixed at top, below status bar) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="16dp">
+        android:layout_marginBottom="16dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
 
         <Button
             android:id="@+id/btn_refresh"
@@ -42,7 +48,9 @@
         android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="#ffffff"
-        android:layout_marginBottom="12dp"/>
+        android:layout_marginBottom="12dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"/>
 
     <!-- Scrollable log content -->
     <ScrollView
@@ -57,7 +65,7 @@
             android:textColor="#ffffff"
             android:textSize="10sp"
             android:fontFamily="monospace"
-            android:padding="8dp"/>
+            android:padding="12dp"/>
 
     </ScrollView>
 
