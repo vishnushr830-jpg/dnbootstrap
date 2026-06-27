@@ -1,108 +1,64 @@
-package git.artdeell.dnbootstrap;
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#1a1a1a"
+    android:padding="12dp"
+    android:paddingTop="48dp">
 
-import android.content.Intent;
-import android.os.Bundle;
-import android.widget.Button;
-import android.widget.ScrollView;
-import android.widget.TextView;
-import android.util.Log;
+    <!-- Buttons (fixed at top, below status bar) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
 
-import androidx.appcompat.app.AppCompatActivity;
+        <Button
+            android:id="@+id/btn_refresh"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Refresh"
+            android:layout_marginEnd="4dp"
+            android:textSize="14sp"/>
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+        <Button
+            android:id="@+id/btn_share_log"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Share Log"
+            android:layout_marginStart="4dp"
+            android:textSize="14sp"/>
 
-public class LogViewerActivity extends AppCompatActivity {
+    </LinearLayout>
 
-    private static final String LOG_DIR = "home/.config/VintagestoryData/Logs";
-    private static final String TAG = "LogViewer";
+    <!-- Title -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Game Logs"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#ffffff"
+        android:layout_marginBottom="12dp"/>
 
-    private TextView logText;
-    private ScrollView scrollView;
-    private Button refreshBtn;
-    private Button shareBtn;
+    <!-- Scrollable log content -->
+    <ScrollView
+        android:id="@+id/log_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_log_viewer);
+        <TextView
+            android:id="@+id/log_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#ffffff"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:padding="8dp"/>
 
-        try {
-            logText = findViewById(R.id.log_text);
-            scrollView = findViewById(R.id.log_scroll);
-            refreshBtn = findViewById(R.id.btn_refresh);
-            shareBtn = findViewById(R.id.btn_share_log);
+    </ScrollView>
 
-            if (refreshBtn == null) Log.e(TAG, "refresh button is NULL");
-            if (shareBtn == null) Log.e(TAG, "share button is NULL");
-
-            loadLog();
-
-            if (refreshBtn != null) {
-                refreshBtn.setOnClickListener(v -> loadLog());
-            }
-            if (shareBtn != null) {
-                shareBtn.setOnClickListener(v -> shareLog());
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error in onCreate", e);
-        }
-    }
-
-    private void loadLog() {
-        File logDir = new File(getFilesDir(), LOG_DIR);
-
-        if (!logDir.exists()) {
-            logText.setText("No logs folder found yet.\nLaunch the game first.\n\nPath: " + logDir.getAbsolutePath());
-            return;
-        }
-
-        File[] logFiles = logDir.listFiles(
-            (dir, name) -> name.endsWith(".log")
-        );
-
-        if (logFiles == null || logFiles.length == 0) {
-            logText.setText("No log files found in:\n" + logDir.getAbsolutePath());
-            return;
-        }
-
-        File latestLog = logFiles[0];
-        for (File f : logFiles) {
-            if (f.lastModified() > latestLog.lastModified()) {
-                latestLog = f;
-            }
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("File: ").append(latestLog.getName()).append("\n\n");
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(latestLog))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line).append("\n");
-            }
-        } catch (IOException e) {
-            sb.append("Error reading log: ").append(e.getMessage());
-        }
-
-        logText.setText(sb.toString());
-
-        if (scrollView != null) {
-            scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_DOWN));
-        }
-    }
-
-    private void shareLog() {
-        String logContent = logText.getText().toString();
-        if (logContent.isEmpty()) return;
-
-        Intent shareIntent = new Intent(Intent.ACTION_SEND);
-        shareIntent.setType("text/plain");
-        shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Vintage Story Log");
-        shareIntent.putExtra(Intent.EXTRA_TEXT, logContent);
-        startActivity(Intent.createChooser(shareIntent, "Share Log"));
-    }
-}
+</LinearLayout>
