@@ -1,4 +1,4 @@
-package git.vishnushr830.dnbootstrap;
+package git.artdeell.dnbootstrap;
 
 import android.content.Intent;
 import android.os.Bundle;
