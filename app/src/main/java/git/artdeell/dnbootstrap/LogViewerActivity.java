@@ -2,12 +2,15 @@ package git.artdeell.dnbootstrap;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -29,6 +32,14 @@ public class LogViewerActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_log_viewer);
 
+        // Fix status bar overlap properly
+        View rootView = findViewById(R.id.root_layout);
+        ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
+            int topInset = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top;
+            v.setPadding(0, topInset, 0, 0);
+            return insets;
+        });
+
         try {
             logText = findViewById(R.id.log_text);
             scrollView = findViewById(R.id.log_scroll);
@@ -37,12 +48,8 @@ public class LogViewerActivity extends AppCompatActivity {
 
             loadLog();
 
-            if (refreshBtn != null) {
-                refreshBtn.setOnClickListener(v -> loadLog());
-            }
-            if (shareBtn != null) {
-                shareBtn.setOnClickListener(v -> shareLog());
-            }
+            if (refreshBtn != null) refreshBtn.setOnClickListener(v -> loadLog());
+            if (shareBtn != null) shareBtn.setOnClickListener(v -> shareLog());
 
         } catch (Exception e) {
             Log.e(TAG, "Error in onCreate", e);
@@ -58,16 +65,13 @@ public class LogViewerActivity extends AppCompatActivity {
             return;
         }
 
-        File[] logFiles = logDir.listFiles(
-            (dir, name) -> name.endsWith(".log")
-        );
+        File[] logFiles = logDir.listFiles((dir, name) -> name.endsWith(".log"));
 
         if (logFiles == null || logFiles.length == 0) {
             logText.setText("No log files found in:\n" + logDir.getAbsolutePath());
             return;
         }
 
-        // Pick most recently modified log file
         File latestLog = logFiles[0];
         for (File f : logFiles) {
             if (f.lastModified() > latestLog.lastModified()) {
@@ -89,7 +93,6 @@ public class LogViewerActivity extends AppCompatActivity {
 
         logText.setText(sb.toString());
 
-        // Auto scroll to bottom
         if (scrollView != null) {
             scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_DOWN));
         }
