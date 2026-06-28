@@ -64,6 +64,7 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         Button settingsButton = findViewById(R.id.btn_settings);
         Button logsButton = findViewById(R.id.btn_view_logs);
         Button shaderButton = findViewById(R.id.btn_shader_debug);
+        Button transShaderButton = findViewById(R.id.btn_show_transparency_shaders);
         Button patchButton = findViewById(R.id.btn_patch_shader);
         Button patchAllButton = findViewById(R.id.btn_patch_all_shaders);
         Button restoreButton = findViewById(R.id.btn_restore_shaders);
@@ -81,6 +82,8 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         });
 
         shaderButton.setOnClickListener(v -> showShaderInActivity());
+
+        transShaderButton.setOnClickListener(v -> showTransparencyShaders());
 
         patchButton.setOnClickListener(v -> patchShader());
 
@@ -114,6 +117,42 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         startActivity(intent);
     }
 
+    private void showTransparencyShaders() {
+        String[] shaderNames = {
+            "woittest.fsh",
+            "transparentliquid.fsh",
+            "transparent.fsh",
+            "chunkliquid.fsh",
+            "chunkopaque.fsh"
+        };
+
+        StringBuilder sb = new StringBuilder();
+        File shaderDir = new File(getFilesDir(),
+            "vs/vintagestory/assets/game/shaders");
+
+        for (String name : shaderNames) {
+            File shader = new File(shaderDir, name);
+            sb.append("=== ").append(name).append(" ===\n");
+            if (!shader.exists()) {
+                sb.append("NOT FOUND\n\n");
+                continue;
+            }
+            try (BufferedReader reader = new BufferedReader(new FileReader(shader))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line).append("\n");
+                }
+            } catch (Exception e) {
+                sb.append("Error: ").append(e.getMessage()).append("\n");
+            }
+            sb.append("\n\n");
+        }
+
+        Intent intent = new Intent(this, LogViewerActivity.class);
+        intent.putExtra("custom_text", sb.toString());
+        startActivity(intent);
+    }
+
     private void patchShader() {
         File shaderFile = new File(getFilesDir(),
             "vs/vintagestory/assets/game/shaders/woittest.fsh");
@@ -123,8 +162,6 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             return;
         }
 
-        // Keep #version 330 core so OpenLTW handles translation
-        // Just fix the multiple render target issue
         String patchedShader =
             "#version 330 core\n" +
             "\n" +
