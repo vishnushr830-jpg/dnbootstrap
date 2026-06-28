@@ -62,6 +62,7 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         Button startButton = findViewById(R.id.btn_start_game);
         Button settingsButton = findViewById(R.id.btn_settings);
         Button logsButton = findViewById(R.id.btn_view_logs);
+        Button shaderButton = findViewById(R.id.btn_shader_debug);
 
         startButton.setOnClickListener(v -> startGame());
 
@@ -75,64 +76,32 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             startActivity(intent);
         });
 
-        // Temporary — find shader
-        findAndPatchShader();
+        shaderButton.setOnClickListener(v -> showShaderInActivity());
     }
 
-    private void findAndPatchShader() {
-        File shaderDir = new File(getFilesDir(), "vs/vintagestory/assets/game/shaders");
-        File woiShader = new File(shaderDir, "woittest.fsh");
+    private void showShaderInActivity() {
+        File shaderFile = new File(getFilesDir(),
+            "vs/vintagestory/assets/game/shaders/woittest.fsh");
 
-        if (!woiShader.exists()) {
-            // Search all shader folders
-            File assetsDir = new File(getFilesDir(), "vs/vintagestory/assets");
-            searchForShader(assetsDir);
+        StringBuilder sb = new StringBuilder();
+
+        if (!shaderFile.exists()) {
+            sb.append("Shader file not found at:\n")
+              .append(shaderFile.getAbsolutePath());
         } else {
-            readShader(woiShader);
-        }
-    }
-
-    private void searchForShader(File dir) {
-        if (!dir.exists() || !dir.isDirectory()) return;
-        File[] files = dir.listFiles();
-        if (files == null) return;
-        for (File f : files) {
-            if (f.isDirectory()) {
-                searchForShader(f);
-            } else if (f.getName().equals("woittest.fsh")) {
-                readShader(f);
-                return;
+            try (BufferedReader reader = new BufferedReader(new FileReader(shaderFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line).append("\n");
+                }
+            } catch (Exception e) {
+                sb.append("Error reading shader:\n").append(e.getMessage());
             }
         }
-    }
 
-    private void readShader(File shaderFile) {
-        try {
-            StringBuilder sb = new StringBuilder();
-            BufferedReader reader = new BufferedReader(new FileReader(shaderFile));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line).append("\n");
-            }
-            reader.close();
-
-            Log.d("ShaderPatch", "Found shader at: " + shaderFile.getAbsolutePath());
-            Log.d("ShaderPatch", "Content:\n" + sb.toString());
-
-            runOnUiThread(() ->
-                Toast.makeText(this,
-                    "Shader found!\n" + shaderFile.getAbsolutePath(),
-                    Toast.LENGTH_LONG).show()
-            );
-
-        } catch (Exception e) {
-            Log.e("ShaderPatch", "Error reading shader: " + e.getMessage());
-            runOnUiThread(() ->
-                Toast.makeText(this,
-                    "Shader error: " + e.getMessage(),
-                    Toast.LENGTH_LONG).show()
-            );
-        }
+        Intent intent = new Intent(this, LogViewerActivity.class);
+        intent.putExtra("custom_text", sb.toString());
+        startActivity(intent);
     }
 
     private void startGame() {
