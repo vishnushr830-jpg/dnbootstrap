@@ -66,6 +66,7 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         Button shaderButton = findViewById(R.id.btn_shader_debug);
         Button patchButton = findViewById(R.id.btn_patch_shader);
         Button patchAllButton = findViewById(R.id.btn_patch_all_shaders);
+        Button restoreButton = findViewById(R.id.btn_restore_shaders);
 
         startButton.setOnClickListener(v -> startGame());
 
@@ -84,6 +85,8 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         patchButton.setOnClickListener(v -> patchShader());
 
         patchAllButton.setOnClickListener(v -> patchAllShaders());
+
+        restoreButton.setOnClickListener(v -> restoreShaders());
     }
 
     private void showShaderInActivity() {
@@ -166,11 +169,15 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         }
 
         int patched = 0;
+        int skipped = 0;
         int failed = 0;
 
         for (File shader : shaderFiles) {
-            if (!shader.getName().endsWith(".fsh") &&
-                !shader.getName().endsWith(".vsh")) continue;
+            // Only patch fragment shaders — skip vertex shaders (.vsh)
+            if (!shader.getName().endsWith(".fsh")) {
+                skipped++;
+                continue;
+            }
 
             try {
                 // Read
@@ -185,9 +192,12 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
                 String content = sb.toString();
 
                 // Only patch if it has desktop GL version
-                if (!content.contains("#version 330 core")) continue;
+                if (!content.contains("#version 330 core")) {
+                    skipped++;
+                    continue;
+                }
 
-                // Patch
+                // Patch — only replace version, add precision
                 String patchedContent = content.replace(
                     "#version 330 core",
                     "#version 300 es\nprecision mediump float;"
@@ -208,9 +218,41 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
 
         Toast.makeText(this,
             "Patched " + patched + " shaders!\n" +
+            "Skipped: " + skipped + "\n" +
             "Failed: " + failed + "\n" +
             "Launch game now.",
             Toast.LENGTH_LONG).show();
+    }
+
+    private void restoreShaders() {
+        File shaderDir = new File(getFilesDir(),
+            "vs/vintagestory/assets/game/shaders");
+
+        if (!shaderDir.exists()) {
+            Toast.makeText(this, "Shader folder not found!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        File[] files = shaderDir.listFiles();
+        if (files == null) {
+            Toast.makeText(this, "No shaders to restore!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Delete the installed marker so the app re-extracts game files
+        File vsDir = new File(getFilesDir(), "vs");
+        File installedMarker = new File(vsDir, ".installed");
+        if (installedMarker.exists()) {
+            installedMarker.delete();
+        }
+
+        Toast.makeText(this,
+            "Marked for reinstall.\nPlease restart the app — it will re-extract game files.",
+            Toast.LENGTH_LONG).show();
+
+        // Restart the activity so it triggers re-extraction
+        finish();
+        startActivity(getIntent());
     }
 
     private void startGame() {
