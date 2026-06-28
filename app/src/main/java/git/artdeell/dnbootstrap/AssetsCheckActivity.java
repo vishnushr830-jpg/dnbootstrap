@@ -161,7 +161,7 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
 
     private void patchClientSettings() {
         File configFile = new File(getFilesDir(),
-            "home/.config/VintagestoryData/ClientSettings.json");
+            "home/.config/VintagestoryData/clientsettings.json");
 
         if (!configFile.exists()) {
             Toast.makeText(this,
