@@ -2,11 +2,11 @@ package git.artdeell.dnbootstrap;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.ViewCompat;
@@ -32,7 +32,7 @@ public class LogViewerActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_log_viewer);
 
-        // Fix status bar overlap properly
+        // Fix status bar overlap
         View rootView = findViewById(R.id.root_layout);
         ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
             int topInset = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top;
@@ -46,10 +46,20 @@ public class LogViewerActivity extends AppCompatActivity {
             refreshBtn = findViewById(R.id.btn_refresh);
             shareBtn = findViewById(R.id.btn_share_log);
 
-            loadLog();
+            // Check if we were passed custom text to display
+            String customText = getIntent().getStringExtra("custom_text");
+            if (customText != null) {
+                logText.setText(customText);
+            } else {
+                loadLog();
+                if (refreshBtn != null) {
+                    refreshBtn.setOnClickListener(v -> loadLog());
+                }
+            }
 
-            if (refreshBtn != null) refreshBtn.setOnClickListener(v -> loadLog());
-            if (shareBtn != null) shareBtn.setOnClickListener(v -> shareLog());
+            if (shareBtn != null) {
+                shareBtn.setOnClickListener(v -> shareLog());
+            }
 
         } catch (Exception e) {
             Log.e(TAG, "Error in onCreate", e);
@@ -57,32 +67,18 @@ public class LogViewerActivity extends AppCompatActivity {
     }
 
     private void loadLog() {
-        File logDir = new File(getFilesDir(), LOG_DIR);
+        File logFile = new File(getFilesDir(), LOG_DIR + "/client-main.log");
 
-        if (!logDir.exists()) {
-            logText.setText("No logs folder found yet.\nLaunch the game first.\n\nPath: "
-                + logDir.getAbsolutePath());
+        if (!logFile.exists()) {
+            logText.setText("client-main.log not found.\nLaunch the game first.\n\nPath: "
+                + logFile.getAbsolutePath());
             return;
-        }
-
-        File[] logFiles = logDir.listFiles((dir, name) -> name.endsWith(".log"));
-
-        if (logFiles == null || logFiles.length == 0) {
-            logText.setText("No log files found in:\n" + logDir.getAbsolutePath());
-            return;
-        }
-
-        File latestLog = logFiles[0];
-        for (File f : logFiles) {
-            if (f.lastModified() > latestLog.lastModified()) {
-                latestLog = f;
-            }
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("File: ").append(latestLog.getName()).append("\n\n");
+        sb.append("File: client-main.log\n\n");
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(latestLog))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 sb.append(line).append("\n");
