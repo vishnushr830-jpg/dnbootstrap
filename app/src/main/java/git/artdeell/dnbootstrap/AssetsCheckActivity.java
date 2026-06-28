@@ -18,6 +18,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 
 import git.artdeell.dnbootstrap.assets.AppDirs;
 import git.artdeell.dnbootstrap.assets.AssetsExtractor;
@@ -63,6 +64,7 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         Button settingsButton = findViewById(R.id.btn_settings);
         Button logsButton = findViewById(R.id.btn_view_logs);
         Button shaderButton = findViewById(R.id.btn_shader_debug);
+        Button patchButton = findViewById(R.id.btn_patch_shader);
 
         startButton.setOnClickListener(v -> startGame());
 
@@ -77,6 +79,8 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         });
 
         shaderButton.setOnClickListener(v -> showShaderInActivity());
+
+        patchButton.setOnClickListener(v -> patchShader());
     }
 
     private void showShaderInActivity() {
@@ -102,6 +106,46 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         Intent intent = new Intent(this, LogViewerActivity.class);
         intent.putExtra("custom_text", sb.toString());
         startActivity(intent);
+    }
+
+    private void patchShader() {
+        File shaderFile = new File(getFilesDir(),
+            "vs/vintagestory/assets/game/shaders/woittest.fsh");
+
+        if (!shaderFile.exists()) {
+            Toast.makeText(this, "Shader not found!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            // Read the shader
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new FileReader(shaderFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line).append("\n");
+                }
+            }
+
+            // Patch — replace desktop GL with OpenGL ES
+            String patched = sb.toString()
+                .replace("#version 330 core", "#version 300 es");
+
+            // Write back
+            try (FileWriter writer = new FileWriter(shaderFile)) {
+                writer.write(patched);
+            }
+
+            Toast.makeText(this,
+                "Shader patched successfully!\nLaunch the game now.",
+                Toast.LENGTH_LONG).show();
+
+        } catch (Exception e) {
+            Toast.makeText(this,
+                "Patch failed: " + e.getMessage(),
+                Toast.LENGTH_LONG).show();
+            Log.e("ShaderPatch", "Error patching shader", e);
+        }
     }
 
     private void startGame() {
