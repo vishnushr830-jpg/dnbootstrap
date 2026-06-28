@@ -117,29 +117,29 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             return;
         }
 
-        try {
-            // Read the shader
-            StringBuilder sb = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new FileReader(shaderFile))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    sb.append(line).append("\n");
-                }
-            }
+        // Minimal OpenGL ES 3.0 compatible replacement
+        String patchedShader =
+            "#version 300 es\n" +
+            "precision mediump float;\n" +
+            "\n" +
+            "in vec4 v_color;\n" +
+            "\n" +
+            "out vec4 outAccu;\n" +
+            "out vec4 outReveal;\n" +
+            "\n" +
+            "void main() {\n" +
+            "    float alpha = v_color.a;\n" +
+            "    float z = gl_FragCoord.z;\n" +
+            "    float weight = max(0.01, min(3000.0, 0.03 / (0.00001 + pow(z / 200.0, 4.0))));\n" +
+            "    outAccu = vec4(v_color.rgb * alpha, alpha) * weight;\n" +
+            "    outReveal = vec4(alpha, 0.0, 0.0, 1.0);\n" +
+            "}\n";
 
-            // Patch — replace desktop GL with OpenGL ES
-            String patched = sb.toString()
-                .replace("#version 330 core", "#version 300 es");
-
-            // Write back
-            try (FileWriter writer = new FileWriter(shaderFile)) {
-                writer.write(patched);
-            }
-
+        try (FileWriter writer = new FileWriter(shaderFile)) {
+            writer.write(patchedShader);
             Toast.makeText(this,
-                "Shader patched successfully!\nLaunch the game now.",
+                "Shader patched! Launch game now.",
                 Toast.LENGTH_LONG).show();
-
         } catch (Exception e) {
             Toast.makeText(this,
                 "Patch failed: " + e.getMessage(),
