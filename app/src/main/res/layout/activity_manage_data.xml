@@ -20,7 +20,6 @@
         android:text="@string/manage_data_uninstall_components"
         android:textAllCaps="false"
         android:layout_marginTop="@dimen/global_margin"
-        android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/manage_space_uninstall_game" />
 
     <Button

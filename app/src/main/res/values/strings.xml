@@ -2,7 +2,7 @@
     <string name="app_name">dnbootstrap</string>
     <string name="error">Error</string>
     <string name="extract_runtime">Unpacking files. Please do not turn off your device</string>
-    <string name="require_game_copy">Please download a copy of Vintage Story 1.21.6 from the Client Area and then select it in your file manager using the button below.\n\n This application is EXPERIMENTAL and you may find BUGS or it may NOT WORK FOR YOU AT ALL.</string>
+    <string name="require_game_copy">Please download a copy of Vintage Story 1.22.3 from the Client Area and then select it in your file manager using the button below.\n\n This application is EXPERIMENTAL and you may find BUGS or it may NOT WORK FOR YOU AT ALL.</string>
     <string name="select">Select</string>
     <string name="grid_layout_alignment_left">From left</string>
     <string name="grid_layout_alignment_right">From right</string>
