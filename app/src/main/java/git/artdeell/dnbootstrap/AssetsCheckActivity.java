@@ -65,6 +65,7 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         Button logsButton = findViewById(R.id.btn_view_logs);
         Button shaderButton = findViewById(R.id.btn_shader_debug);
         Button transShaderButton = findViewById(R.id.btn_show_transparency_shaders);
+        Button patchSpecificButton = findViewById(R.id.btn_patch_specific);
         Button patchButton = findViewById(R.id.btn_patch_shader);
         Button patchAllButton = findViewById(R.id.btn_patch_all_shaders);
         Button restoreButton = findViewById(R.id.btn_restore_shaders);
@@ -84,6 +85,8 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         shaderButton.setOnClickListener(v -> showShaderInActivity());
 
         transShaderButton.setOnClickListener(v -> showTransparencyShaders());
+
+        patchSpecificButton.setOnClickListener(v -> patchSpecificShaders());
 
         patchButton.setOnClickListener(v -> patchShader());
 
@@ -151,6 +154,45 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         Intent intent = new Intent(this, LogViewerActivity.class);
         intent.putExtra("custom_text", sb.toString());
         startActivity(intent);
+    }
+
+    private void patchSpecificShaders() {
+        File shaderDir = new File(getFilesDir(),
+            "vs/vintagestory/assets/game/shaders");
+
+        // Fix 1: chunkopaque.fsh — remove unsupported extension
+        patchFile(new File(shaderDir, "chunkopaque.fsh"),
+            "#extension GL_ARB_explicit_attrib_location: enable\n",
+            "");
+
+        // Fix 2: woittest.fsh — fix outReveal assignment
+        patchFile(new File(shaderDir, "woittest.fsh"),
+            "outReveal.r = alpha;",
+            "outReveal = vec4(alpha, 0.0, 0.0, 1.0);");
+
+        Toast.makeText(this,
+            "Specific shaders patched!\nLaunch game now.",
+            Toast.LENGTH_LONG).show();
+    }
+
+    private void patchFile(File file, String from, String to) {
+        if (!file.exists()) return;
+        try {
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line).append("\n");
+                }
+            }
+            String patched = sb.toString().replace(from, to);
+            try (FileWriter writer = new FileWriter(file)) {
+                writer.write(patched);
+            }
+            Log.d("ShaderPatch", "Patched: " + file.getName());
+        } catch (Exception e) {
+            Log.e("ShaderPatch", "Failed: " + file.getName(), e);
+        }
     }
 
     private void patchShader() {
