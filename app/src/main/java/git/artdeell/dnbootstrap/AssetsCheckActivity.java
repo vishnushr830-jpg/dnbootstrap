@@ -123,10 +123,10 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             return;
         }
 
+        // Keep #version 330 core so OpenLTW handles translation
+        // Just fix the multiple render target issue
         String patchedShader =
-            "#version 300 es\n" +
-            "precision highp float;\n" +
-            "precision highp int;\n" +
+            "#version 330 core\n" +
             "\n" +
             "in vec4 v_color;\n" +
             "\n" +
@@ -178,7 +178,6 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             if (!isFsh && !isVsh) continue;
 
             try {
-                // Read
                 StringBuilder sb = new StringBuilder();
                 try (BufferedReader reader = new BufferedReader(new FileReader(shader))) {
                     String line;
@@ -192,7 +191,6 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
 
                 String patchedContent;
                 if (isFsh) {
-                    // Fragment shaders need full precision qualifiers
                     patchedContent = content.replace(
                         "#version 330 core",
                         "#version 300 es\n" +
@@ -205,14 +203,12 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
                         "precision highp sampler2DShadow;"
                     );
                 } else {
-                    // Vertex shaders — just change version
                     patchedContent = content.replace(
                         "#version 330 core",
                         "#version 300 es"
                     );
                 }
 
-                // Write back
                 try (FileWriter writer = new FileWriter(shader)) {
                     writer.write(patchedContent);
                 }
