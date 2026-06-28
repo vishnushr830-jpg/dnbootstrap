@@ -65,4 +65,14 @@
         android:backgroundTint="#4CAF50"
         android:layout_marginBottom="16dp"/>
 
+    <Button
+        android:id="@+id/btn_patch_all_shaders"
+        android:layout_width="240dp"
+        android:layout_height="56dp"
+        android:text="Patch All Shaders"
+        android:textAllCaps="false"
+        android:textSize="18sp"
+        android:backgroundTint="#FF9800"
+        android:layout_marginBottom="16dp"/>
+
 </LinearLayout>
