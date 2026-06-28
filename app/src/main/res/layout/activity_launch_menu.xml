@@ -66,6 +66,16 @@
         style="@style/Widget.AppCompat.Button.Borderless"/>
 
     <Button
+        android:id="@+id/btn_patch_specific"
+        android:layout_width="240dp"
+        android:layout_height="56dp"
+        android:text="Patch Specific"
+        android:textAllCaps="false"
+        android:textSize="18sp"
+        android:backgroundTint="#9C27B0"
+        android:layout_marginBottom="16dp"/>
+
+    <Button
         android:id="@+id/btn_patch_shader"
         android:layout_width="240dp"
         android:layout_height="56dp"
