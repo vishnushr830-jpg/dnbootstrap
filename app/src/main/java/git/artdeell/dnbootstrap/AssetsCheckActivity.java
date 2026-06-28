@@ -65,6 +65,7 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         Button logsButton = findViewById(R.id.btn_view_logs);
         Button shaderButton = findViewById(R.id.btn_shader_debug);
         Button patchButton = findViewById(R.id.btn_patch_shader);
+        Button patchAllButton = findViewById(R.id.btn_patch_all_shaders);
 
         startButton.setOnClickListener(v -> startGame());
 
@@ -81,6 +82,8 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         shaderButton.setOnClickListener(v -> showShaderInActivity());
 
         patchButton.setOnClickListener(v -> patchShader());
+
+        patchAllButton.setOnClickListener(v -> patchAllShaders());
     }
 
     private void showShaderInActivity() {
@@ -117,7 +120,6 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             return;
         }
 
-        // Minimal OpenGL ES 3.0 compatible replacement
         String patchedShader =
             "#version 300 es\n" +
             "precision mediump float;\n" +
@@ -146,6 +148,69 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
                 Toast.LENGTH_LONG).show();
             Log.e("ShaderPatch", "Error patching shader", e);
         }
+    }
+
+    private void patchAllShaders() {
+        File shaderDir = new File(getFilesDir(),
+            "vs/vintagestory/assets/game/shaders");
+
+        if (!shaderDir.exists()) {
+            Toast.makeText(this, "Shader folder not found!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        File[] shaderFiles = shaderDir.listFiles();
+        if (shaderFiles == null) {
+            Toast.makeText(this, "No shaders found!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int patched = 0;
+        int failed = 0;
+
+        for (File shader : shaderFiles) {
+            if (!shader.getName().endsWith(".fsh") &&
+                !shader.getName().endsWith(".vsh")) continue;
+
+            try {
+                // Read
+                StringBuilder sb = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(new FileReader(shader))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line).append("\n");
+                    }
+                }
+
+                String content = sb.toString();
+
+                // Only patch if it has desktop GL version
+                if (!content.contains("#version 330 core")) continue;
+
+                // Patch
+                String patchedContent = content.replace(
+                    "#version 330 core",
+                    "#version 300 es\nprecision mediump float;"
+                );
+
+                // Write back
+                try (FileWriter writer = new FileWriter(shader)) {
+                    writer.write(patchedContent);
+                }
+
+                patched++;
+
+            } catch (Exception e) {
+                Log.e("ShaderPatch", "Failed to patch: " + shader.getName(), e);
+                failed++;
+            }
+        }
+
+        Toast.makeText(this,
+            "Patched " + patched + " shaders!\n" +
+            "Failed: " + failed + "\n" +
+            "Launch game now.",
+            Toast.LENGTH_LONG).show();
     }
 
     private void startGame() {
