@@ -42,6 +42,16 @@
         android:text="View Logs"
         android:textAllCaps="false"
         android:textSize="18sp"
+        android:layout_marginBottom="16dp"
+        style="@style/Widget.AppCompat.Button.Borderless"/>
+
+    <Button
+        android:id="@+id/btn_shader_debug"
+        android:layout_width="240dp"
+        android:layout_height="56dp"
+        android:text="Show Shader"
+        android:textAllCaps="false"
+        android:textSize="18sp"
         style="@style/Widget.AppCompat.Button.Borderless"/>
 
 </LinearLayout>
