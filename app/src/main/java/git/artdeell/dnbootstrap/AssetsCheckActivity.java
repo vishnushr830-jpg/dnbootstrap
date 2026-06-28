@@ -125,7 +125,8 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
 
         String patchedShader =
             "#version 300 es\n" +
-            "precision mediump float;\n" +
+            "precision highp float;\n" +
+            "precision highp int;\n" +
             "\n" +
             "in vec4 v_color;\n" +
             "\n" +
@@ -169,15 +170,12 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         }
 
         int patched = 0;
-        int skipped = 0;
         int failed = 0;
 
         for (File shader : shaderFiles) {
-            // Only patch fragment shaders — skip vertex shaders (.vsh)
-            if (!shader.getName().endsWith(".fsh")) {
-                skipped++;
-                continue;
-            }
+            boolean isFsh = shader.getName().endsWith(".fsh");
+            boolean isVsh = shader.getName().endsWith(".vsh");
+            if (!isFsh && !isVsh) continue;
 
             try {
                 // Read
@@ -190,18 +188,29 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
                 }
 
                 String content = sb.toString();
+                if (!content.contains("#version 330 core")) continue;
 
-                // Only patch if it has desktop GL version
-                if (!content.contains("#version 330 core")) {
-                    skipped++;
-                    continue;
+                String patchedContent;
+                if (isFsh) {
+                    // Fragment shaders need full precision qualifiers
+                    patchedContent = content.replace(
+                        "#version 330 core",
+                        "#version 300 es\n" +
+                        "precision highp float;\n" +
+                        "precision highp int;\n" +
+                        "precision highp sampler2D;\n" +
+                        "precision highp sampler2DArray;\n" +
+                        "precision highp sampler3D;\n" +
+                        "precision highp samplerCube;\n" +
+                        "precision highp sampler2DShadow;"
+                    );
+                } else {
+                    // Vertex shaders — just change version
+                    patchedContent = content.replace(
+                        "#version 330 core",
+                        "#version 300 es"
+                    );
                 }
-
-                // Patch — only replace version, add precision
-                String patchedContent = content.replace(
-                    "#version 330 core",
-                    "#version 300 es\nprecision mediump float;"
-                );
 
                 // Write back
                 try (FileWriter writer = new FileWriter(shader)) {
@@ -211,35 +220,19 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
                 patched++;
 
             } catch (Exception e) {
-                Log.e("ShaderPatch", "Failed to patch: " + shader.getName(), e);
+                Log.e("ShaderPatch", "Failed: " + shader.getName(), e);
                 failed++;
             }
         }
 
         Toast.makeText(this,
             "Patched " + patched + " shaders!\n" +
-            "Skipped: " + skipped + "\n" +
             "Failed: " + failed + "\n" +
             "Launch game now.",
             Toast.LENGTH_LONG).show();
     }
 
     private void restoreShaders() {
-        File shaderDir = new File(getFilesDir(),
-            "vs/vintagestory/assets/game/shaders");
-
-        if (!shaderDir.exists()) {
-            Toast.makeText(this, "Shader folder not found!", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        File[] files = shaderDir.listFiles();
-        if (files == null) {
-            Toast.makeText(this, "No shaders to restore!", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Delete the installed marker so the app re-extracts game files
         File vsDir = new File(getFilesDir(), "vs");
         File installedMarker = new File(vsDir, ".installed");
         if (installedMarker.exists()) {
@@ -247,10 +240,9 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         }
 
         Toast.makeText(this,
-            "Marked for reinstall.\nPlease restart the app — it will re-extract game files.",
+            "Marked for reinstall.\nRestarting app...",
             Toast.LENGTH_LONG).show();
 
-        // Restart the activity so it triggers re-extraction
         finish();
         startActivity(getIntent());
     }
