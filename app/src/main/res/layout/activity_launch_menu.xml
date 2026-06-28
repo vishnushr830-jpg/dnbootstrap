@@ -75,4 +75,14 @@
         android:backgroundTint="#FF9800"
         android:layout_marginBottom="16dp"/>
 
+    <Button
+        android:id="@+id/btn_restore_shaders"
+        android:layout_width="240dp"
+        android:layout_height="56dp"
+        android:text="Restore Shaders"
+        android:textAllCaps="false"
+        android:textSize="18sp"
+        android:backgroundTint="#F44336"
+        android:layout_marginBottom="16dp"/>
+
 </LinearLayout>
