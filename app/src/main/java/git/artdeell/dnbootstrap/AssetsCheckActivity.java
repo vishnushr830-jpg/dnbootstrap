@@ -65,6 +65,7 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         Button logsButton = findViewById(R.id.btn_view_logs);
         Button shaderButton = findViewById(R.id.btn_shader_debug);
         Button transShaderButton = findViewById(R.id.btn_show_transparency_shaders);
+        Button patchConfigButton = findViewById(R.id.btn_patch_config);
         Button patchSpecificButton = findViewById(R.id.btn_patch_specific);
         Button patchButton = findViewById(R.id.btn_patch_shader);
         Button patchAllButton = findViewById(R.id.btn_patch_all_shaders);
@@ -85,6 +86,8 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         shaderButton.setOnClickListener(v -> showShaderInActivity());
 
         transShaderButton.setOnClickListener(v -> showTransparencyShaders());
+
+        patchConfigButton.setOnClickListener(v -> patchClientSettings());
 
         patchSpecificButton.setOnClickListener(v -> patchSpecificShaders());
 
@@ -154,6 +157,26 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         Intent intent = new Intent(this, LogViewerActivity.class);
         intent.putExtra("custom_text", sb.toString());
         startActivity(intent);
+    }
+
+    private void patchClientSettings() {
+        File configFile = new File(getFilesDir(),
+            "home/.config/VintagestoryData/ClientSettings.json");
+
+        if (!configFile.exists()) {
+            Toast.makeText(this,
+                "Config not found!\nLaunch game first.",
+                Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        patchFile(configFile,
+            "\"transparentRenderPass\": true",
+            "\"transparentRenderPass\": false");
+
+        Toast.makeText(this,
+            "Config patched!\nTransparent render pass disabled.\nLaunch game now.",
+            Toast.LENGTH_LONG).show();
     }
 
     private void patchSpecificShaders() {
