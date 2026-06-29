@@ -161,7 +161,7 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
 
     private void patchClientSettings() {
         File configFile = new File(getFilesDir(),
-            "home/.config/VintagestoryData/clientsettings.json");
+            "home/.config/VintagestoryData/ClientSettings.json");
 
         if (!configFile.exists()) {
             Toast.makeText(this,
@@ -170,12 +170,31 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             return;
         }
 
+        // Re-enable transparent render pass for water
         patchFile(configFile,
-            "\"transparentRenderPass\": true",
-            "\"transparentRenderPass\": false");
+            "\"transparentRenderPass\": false",
+            "\"transparentRenderPass\": true");
+
+        // Lower chunk upload rate to reduce GPU pressure
+        patchFile(configFile,
+            "\"chunkVerticesUploadRateLimiter\": 3",
+            "\"chunkVerticesUploadRateLimiter\": 1");
+
+        // Reduce model data pool sizes to save GPU memory
+        patchFile(configFile,
+            "\"modelDataPoolMaxVertexSize\": 500000",
+            "\"modelDataPoolMaxVertexSize\": 200000");
+
+        patchFile(configFile,
+            "\"modelDataPoolMaxIndexSize\": 750000",
+            "\"modelDataPoolMaxIndexSize\": 300000");
+
+        patchFile(configFile,
+            "\"modelDataPoolMaxParts\": 1500",
+            "\"modelDataPoolMaxParts\": 600");
 
         Toast.makeText(this,
-            "Config patched!\nTransparent render pass disabled.\nLaunch game now.",
+            "Config patched!\nLaunch game now.",
             Toast.LENGTH_LONG).show();
     }
 
@@ -227,6 +246,7 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             return;
         }
 
+        // Force leaves to render as fully opaque
         String patchedShader =
             "#version 330 core\n" +
             "\n" +
@@ -236,11 +256,9 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             "out vec4 outReveal;\n" +
             "\n" +
             "void main() {\n" +
-            "    float alpha = v_color.a;\n" +
-            "    float z = gl_FragCoord.z;\n" +
-            "    float weight = max(0.01, min(3000.0, 0.03 / (0.00001 + pow(z / 200.0, 4.0))));\n" +
-            "    outAccu = vec4(v_color.rgb * alpha, alpha) * weight;\n" +
-            "    outReveal = vec4(alpha, 0.0, 0.0, 1.0);\n" +
+            "    // Force full opacity so leaves are visible\n" +
+            "    outAccu = vec4(v_color.rgb, 1.0);\n" +
+            "    outReveal = vec4(1.0, 0.0, 0.0, 1.0);\n" +
             "}\n";
 
         try (FileWriter writer = new FileWriter(shaderFile)) {
