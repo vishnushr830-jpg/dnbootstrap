@@ -124,21 +124,43 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
     }
 
     private void showTransparencyShaders() {
-        String[] shaderNames = {
-            "woittest.fsh",
-            "transparentliquid.fsh",
-            "transparent.fsh",
-            "chunkliquid.fsh",
-            "chunkopaque.fsh"
-        };
-
         StringBuilder sb = new StringBuilder();
+
         File shaderDir = new File(getFilesDir(),
             "vs/vintagestory/assets/game/shaders");
+        File includeDir = new File(getFilesDir(),
+            "vs/vintagestory/assets/game/shaderincludes");
+
+        String[] shaderNames = {
+            "woittest.fsh",
+            "chunkliquid.fsh"
+        };
+
+        String[] includeNames = {
+            "oit.fsh"
+        };
 
         for (String name : shaderNames) {
             File shader = new File(shaderDir, name);
             sb.append("=== ").append(name).append(" ===\n");
+            if (!shader.exists()) {
+                sb.append("NOT FOUND\n\n");
+                continue;
+            }
+            try (BufferedReader reader = new BufferedReader(new FileReader(shader))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line).append("\n");
+                }
+            } catch (Exception e) {
+                sb.append("Error: ").append(e.getMessage()).append("\n");
+            }
+            sb.append("\n\n");
+        }
+
+        for (String name : includeNames) {
+            File shader = new File(includeDir, name);
+            sb.append("=== [include] ").append(name).append(" ===\n");
             if (!shader.exists()) {
                 sb.append("NOT FOUND\n\n");
                 continue;
@@ -202,7 +224,6 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         File shaderDir = new File(getFilesDir(),
             "vs/vintagestory/assets/game/shaders");
 
-        // All shaders that failed to compile
         String[] shadersToFix = {
             "particlesquad.fsh",
             "woittest.fsh",
@@ -225,7 +246,6 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             File shader = new File(shaderDir, shaderName);
             if (!shader.exists()) continue;
 
-            // Read full content
             StringBuilder sb = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(new FileReader(shader))) {
                 String line;
@@ -239,8 +259,6 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
 
             String content = sb.toString();
 
-            // Fix outReveal.r = X; → outReveal = vec4(X, 0.0, 0.0, 1.0);
-            // Handle different variable names used in different shaders
             content = content
                 .replace("outReveal.r = alpha;",
                     "outReveal = vec4(alpha, 0.0, 0.0, 1.0);")
@@ -253,7 +271,6 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
                 .replace("outReveal.r = finalColor.a;",
                     "outReveal = vec4(finalColor.a, 0.0, 0.0, 1.0);");
 
-            // Write back
             try (FileWriter writer = new FileWriter(shader)) {
                 writer.write(content);
                 Log.d("ShaderPatch", "Patched: " + shaderName);
