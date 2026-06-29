@@ -65,6 +65,7 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         Button logsButton = findViewById(R.id.btn_view_logs);
         Button shaderButton = findViewById(R.id.btn_shader_debug);
         Button transShaderButton = findViewById(R.id.btn_show_transparency_shaders);
+        Button patchOitButton = findViewById(R.id.btn_patch_oit);
         Button patchConfigButton = findViewById(R.id.btn_patch_config);
         Button patchSpecificButton = findViewById(R.id.btn_patch_specific);
         Button patchButton = findViewById(R.id.btn_patch_shader);
@@ -86,6 +87,8 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         shaderButton.setOnClickListener(v -> showShaderInActivity());
 
         transShaderButton.setOnClickListener(v -> showTransparencyShaders());
+
+        patchOitButton.setOnClickListener(v -> patchOIT());
 
         patchConfigButton.setOnClickListener(v -> patchClientSettings());
 
@@ -181,6 +184,99 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         startActivity(intent);
     }
 
+    private void patchOIT() {
+        File oitFile = new File(getFilesDir(),
+            "vs/vintagestory/assets/game/shaderincludes/oit.fsh");
+
+        if (!oitFile.exists()) {
+            Toast.makeText(this, "oit.fsh not found!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String patchedOIT =
+            "#if USEOIT > 0\n" +
+            "#define OIT_BINS 3\n" +
+            "#define OIT_BIN_SCALE 30.0\n" +
+            "\n" +
+            "layout(location = 0) out vec4 OITreveal;\n" +
+            "layout(location = 1) out vec4 outReveal;\n" +
+            "layout(location = 2) out vec4 outGlow;\n" +
+            "layout(location = 3) out vec4 OITaccumulation0;\n" +
+            "layout(location = 4) out vec4 OITaccumulation1;\n" +
+            "layout(location = 5) out vec4 OITaccumulation2;\n" +
+            "\n" +
+            "void OITaccumulate(int bin, vec4 x){\n" +
+            "    switch(bin){\n" +
+            "        case 0:  OITaccumulation0 = x; return;\n" +
+            "        case 1:  OITaccumulation1 = x; return;\n" +
+            "        default: OITaccumulation2 = x;\n" +
+            "    }\n" +
+            "}\n" +
+            "\n" +
+            "float OITbellcurve(float t){\n" +
+            "    float n = t / 0.832;\n" +
+            "    return exp(-n * n);\n" +
+            "}\n" +
+            "\n" +
+            "float OITweight(float t, float a){\n" +
+            "    return exp(-t / 100.0);\n" +
+            "}\n" +
+            "\n" +
+            "void OIT(vec4 colour, float glow, float depth){\n" +
+            "    depth /= OIT_BIN_SCALE;\n" +
+            "    float bin = log(depth + 1.0);\n" +
+            "    float w = OITweight(depth, colour.a);\n" +
+            "    colour.rgb *= colour.a;\n" +
+            "    for(int i = 0; i < OIT_BINS; i++){\n" +
+            "        float b = OITbellcurve(bin - float(i));\n" +
+            "        if(i == (OIT_BINS-1) && bin > float(OIT_BINS-1)) b = 1.0;\n" +
+            "        OITaccumulate(i, colour * w * b);\n" +
+            "        OITreveal[i] = 1.0 - colour.a * b;\n" +
+            "    }\n" +
+            "    outReveal = vec4(1.0 - colour.a);\n" +
+            "    outGlow = vec4(glow, 0.0, 0.0, colour.a);\n" +
+            "}\n" +
+            "\n" +
+            "void OIT(vec4 colour, float glow){\n" +
+            "    float depth = (gl_FragCoord.z * 2.0 - 1.0) / gl_FragCoord.w;\n" +
+            "    OIT(colour, glow, depth);\n" +
+            "}\n" +
+            "\n" +
+            "#else\n" +
+            "\n" +
+            "// Fallback when USEOIT is disabled\n" +
+            "layout(location = 0) out vec4 outAccu;\n" +
+            "layout(location = 1) out vec4 outReveal;\n" +
+            "layout(location = 2) out vec4 outGlow;\n" +
+            "\n" +
+            "void OIT(vec4 colour, float glow){\n" +
+            "    float alpha = colour.a;\n" +
+            "    float z = gl_FragCoord.z;\n" +
+            "    float weight = max(0.01, min(3000.0, 0.03 / (0.00001 + pow(z / 200.0, 4.0))));\n" +
+            "    outAccu = vec4(colour.rgb * alpha, alpha) * weight;\n" +
+            "    outReveal = vec4(alpha, 0.0, 0.0, 1.0);\n" +
+            "    outGlow = vec4(glow, 0.0, 0.0, alpha);\n" +
+            "}\n" +
+            "\n" +
+            "void OIT(vec4 colour, float glow, float depth){\n" +
+            "    OIT(colour, glow);\n" +
+            "}\n" +
+            "\n" +
+            "#endif\n";
+
+        try (FileWriter writer = new FileWriter(oitFile)) {
+            writer.write(patchedOIT);
+            Toast.makeText(this,
+                "OIT shader patched!\nLaunch game now.",
+                Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this,
+                "OIT patch failed: " + e.getMessage(),
+                Toast.LENGTH_LONG).show();
+            Log.e("ShaderPatch", "Error patching oit.fsh", e);
+        }
+    }
+
     private void patchClientSettings() {
         File configFile = new File(getFilesDir(),
             "home/.config/VintagestoryData/clientsettings.json");
@@ -192,17 +288,14 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             return;
         }
 
-        // Re-enable transparent render pass for water
         patchFile(configFile,
             "\"transparentRenderPass\": false",
             "\"transparentRenderPass\": true");
 
-        // Lower chunk upload rate to reduce GPU pressure
         patchFile(configFile,
             "\"chunkVerticesUploadRateLimiter\": 3",
             "\"chunkVerticesUploadRateLimiter\": 1");
 
-        // Reduce model data pool sizes to save GPU memory
         patchFile(configFile,
             "\"modelDataPoolMaxVertexSize\": 500000",
             "\"modelDataPoolMaxVertexSize\": 200000");
@@ -236,12 +329,10 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             "entityanimated.fsh"
         };
 
-        // Fix 1: Remove unsupported extension from chunkopaque
         patchFile(new File(shaderDir, "chunkopaque.fsh"),
             "#extension GL_ARB_explicit_attrib_location: enable\n",
             "");
 
-        // Fix 2: Fix outReveal partial assignment in all failing shaders
         for (String shaderName : shadersToFix) {
             File shader = new File(shaderDir, shaderName);
             if (!shader.exists()) continue;
