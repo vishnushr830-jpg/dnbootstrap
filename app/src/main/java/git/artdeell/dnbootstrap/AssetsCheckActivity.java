@@ -202,18 +202,68 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         File shaderDir = new File(getFilesDir(),
             "vs/vintagestory/assets/game/shaders");
 
-        // Fix 1: chunkopaque.fsh — remove unsupported extension
+        // All shaders that failed to compile
+        String[] shadersToFix = {
+            "particlesquad.fsh",
+            "woittest.fsh",
+            "chunkliquid.fsh",
+            "chunktransparent.fsh",
+            "blockhighlights.fsh",
+            "particlesquad2d.fsh",
+            "aurora.fsh",
+            "cloudvolumetric.fsh",
+            "entityanimated.fsh"
+        };
+
+        // Fix 1: Remove unsupported extension from chunkopaque
         patchFile(new File(shaderDir, "chunkopaque.fsh"),
             "#extension GL_ARB_explicit_attrib_location: enable\n",
             "");
 
-        // Fix 2: woittest.fsh — fix outReveal assignment
-        patchFile(new File(shaderDir, "woittest.fsh"),
-            "outReveal.r = alpha;",
-            "outReveal = vec4(alpha, 0.0, 0.0, 1.0);");
+        // Fix 2: Fix outReveal partial assignment in all failing shaders
+        for (String shaderName : shadersToFix) {
+            File shader = new File(shaderDir, shaderName);
+            if (!shader.exists()) continue;
+
+            // Read full content
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new FileReader(shader))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line).append("\n");
+                }
+            } catch (Exception e) {
+                Log.e("ShaderPatch", "Failed to read: " + shaderName, e);
+                continue;
+            }
+
+            String content = sb.toString();
+
+            // Fix outReveal.r = X; → outReveal = vec4(X, 0.0, 0.0, 1.0);
+            // Handle different variable names used in different shaders
+            content = content
+                .replace("outReveal.r = alpha;",
+                    "outReveal = vec4(alpha, 0.0, 0.0, 1.0);")
+                .replace("outReveal.r = color.a;",
+                    "outReveal = vec4(color.a, 0.0, 0.0, 1.0);")
+                .replace("outReveal.r = rgba.a;",
+                    "outReveal = vec4(rgba.a, 0.0, 0.0, 1.0);")
+                .replace("outReveal.r = texColor.a;",
+                    "outReveal = vec4(texColor.a, 0.0, 0.0, 1.0);")
+                .replace("outReveal.r = finalColor.a;",
+                    "outReveal = vec4(finalColor.a, 0.0, 0.0, 1.0);");
+
+            // Write back
+            try (FileWriter writer = new FileWriter(shader)) {
+                writer.write(content);
+                Log.d("ShaderPatch", "Patched: " + shaderName);
+            } catch (Exception e) {
+                Log.e("ShaderPatch", "Failed to write: " + shaderName, e);
+            }
+        }
 
         Toast.makeText(this,
-            "Specific shaders patched!\nLaunch game now.",
+            "All failing shaders patched!\nLaunch game now.",
             Toast.LENGTH_LONG).show();
     }
 
@@ -246,7 +296,6 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             return;
         }
 
-        // Force leaves to render as fully opaque
         String patchedShader =
             "#version 330 core\n" +
             "\n" +
@@ -256,9 +305,11 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             "out vec4 outReveal;\n" +
             "\n" +
             "void main() {\n" +
-            "    // Force full opacity so leaves are visible\n" +
-            "    outAccu = vec4(v_color.rgb, 1.0);\n" +
-            "    outReveal = vec4(1.0, 0.0, 0.0, 1.0);\n" +
+            "    float alpha = v_color.a;\n" +
+            "    float z = gl_FragCoord.z;\n" +
+            "    float weight = max(0.01, min(3000.0, 0.03 / (0.00001 + pow(z / 200.0, 4.0))));\n" +
+            "    outAccu = vec4(v_color.rgb * alpha, alpha) * weight;\n" +
+            "    outReveal = vec4(alpha, 0.0, 0.0, 1.0);\n" +
             "}\n";
 
         try (FileWriter writer = new FileWriter(shaderFile)) {
