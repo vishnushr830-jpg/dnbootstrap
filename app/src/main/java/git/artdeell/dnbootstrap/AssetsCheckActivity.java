@@ -65,6 +65,7 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         Button logsButton = findViewById(R.id.btn_view_logs);
         Button shaderButton = findViewById(R.id.btn_shader_debug);
         Button transShaderButton = findViewById(R.id.btn_show_transparency_shaders);
+        Button checkTimestampButton = findViewById(R.id.btn_check_timestamp);
         Button patchOitButton = findViewById(R.id.btn_patch_oit);
         Button patchConfigButton = findViewById(R.id.btn_patch_config);
         Button patchSpecificButton = findViewById(R.id.btn_patch_specific);
@@ -88,6 +89,8 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
 
         transShaderButton.setOnClickListener(v -> showTransparencyShaders());
 
+        checkTimestampButton.setOnClickListener(v -> checkShaderTimestamp());
+
         patchOitButton.setOnClickListener(v -> patchOIT());
 
         patchConfigButton.setOnClickListener(v -> patchClientSettings());
@@ -99,6 +102,38 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
         patchAllButton.setOnClickListener(v -> patchAllShaders());
 
         restoreButton.setOnClickListener(v -> restoreShaders());
+    }
+
+    private void checkShaderTimestamp() {
+        File shaderFile = new File(getFilesDir(),
+            "vs/vintagestory/assets/game/shaders/woittest.fsh");
+
+        if (!shaderFile.exists()) {
+            Toast.makeText(this, "File not found", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        long lastModified = shaderFile.lastModified();
+        java.util.Date date = new java.util.Date(lastModified);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Last modified: ").append(date.toString()).append("\n\n");
+        sb.append("Current time: ").append(new java.util.Date().toString()).append("\n\n");
+        sb.append("File size: ").append(shaderFile.length()).append(" bytes\n\n");
+        sb.append("--- FILE CONTENT ---\n\n");
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(shaderFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append("\n");
+            }
+        } catch (Exception e) {
+            sb.append("Error: ").append(e.getMessage());
+        }
+
+        Intent intent = new Intent(this, LogViewerActivity.class);
+        intent.putExtra("custom_text", sb.toString());
+        startActivity(intent);
     }
 
     private void showShaderInActivity() {
@@ -244,7 +279,6 @@ public class AssetsCheckActivity extends AppCompatActivity implements AssetsExtr
             "\n" +
             "#else\n" +
             "\n" +
-            "// Fallback when USEOIT is disabled\n" +
             "layout(location = 0) out vec4 outAccu;\n" +
             "layout(location = 1) out vec4 outReveal;\n" +
             "layout(location = 2) out vec4 outGlow;\n" +
