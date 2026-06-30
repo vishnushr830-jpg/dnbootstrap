@@ -4,12 +4,17 @@ import static android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
+import android.graphics.Point;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 
 import androidx.annotation.RequiresApi;
 
@@ -24,13 +29,12 @@ import git.artdeell.dnbootstrap.input.TouchCharInput;
 import git.artdeell.dnbootstrap.input.editor.ControlEditorLayout;
 import git.artdeell.dnbootstrap.input.editor.LayoutEditorHost;
 import git.artdeell.dnbootstrap.utils.InsetUtils;
-import git.artdeell.dnbootstrap.utils.Utils;
+import git.artdeell.dnbootstrap.utils.DnbUtils;
 
 public class MainActivity extends Activity implements SoftInputCallback, LayoutEditorHost {
     static {
-        System.loadLibrary("glfw");
-        GLFW.initialize();
         System.loadLibrary("dnbootstrap");
+        System.loadLibrary("pojavexec");
     }
 
     private TouchCharInput touchCharInput;
@@ -52,10 +56,25 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerOnBackInvoked();
         }
+        updateDisplayProps();
         if(!isRunning) {
             isRunning = true;
             new Thread(this::kickstart).start();
         }
+    }
+
+    private void updateDisplayProps() {
+        Display display = getDisplay();
+        assert display != null;
+        Point size = new Point();
+        if(Build.VERSION.SDK_INT >= 30) {
+            WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+            Rect bounds = wm.getMaximumWindowMetrics().getBounds();
+            size.set(bounds.width(), bounds.height());
+        }else {
+            display.getRealSize(size);
+        }
+        updateDisplayProperties(size.x, size.y, (int) display.getRefreshRate());
     }
 
     @Override
@@ -93,7 +112,7 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
         try {
             DotnetStarter.kickstart(new AppDirs(getFilesDir()), new File(getApplicationInfo().nativeLibraryDir));
         }catch (Throwable t) {
-            Utils.showErrorDialog(this, t, true);
+            DnbUtils.showErrorDialog(this, t, true);
         }
     }
 
@@ -105,4 +124,5 @@ public class MainActivity extends Activity implements SoftInputCallback, LayoutE
     }
 
     public static native void runDotnet(String dotnetRoot, String vsDir);
+    public static native void updateDisplayProperties(int width, int height, int display_hz);
 }

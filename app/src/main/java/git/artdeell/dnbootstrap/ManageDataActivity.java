@@ -13,7 +13,7 @@ import org.apache.commons.io.FileUtils;
 import java.io.IOException;
 
 import git.artdeell.dnbootstrap.assets.AppDirs;
-import git.artdeell.dnbootstrap.utils.Utils;
+import git.artdeell.dnbootstrap.utils.DnbUtils;
 
 public class ManageDataActivity extends AppCompatActivity {
 
@@ -25,7 +25,7 @@ public class ManageDataActivity extends AppCompatActivity {
         findViewById(R.id.manage_space_uninstall_components).setOnClickListener(v->performAction(this::uninstallComponents));
         findViewById(R.id.manage_space_uninstall_everything).setOnClickListener(v->eraseAppData());
         findViewById(R.id.manage_space_open_data_directory).setOnClickListener(v->{
-            Utils.openPath(this, getFilesDir(), false);
+            DnbUtils.openPath(this, getFilesDir(), false);
         });
     }
 
@@ -37,7 +37,7 @@ public class ManageDataActivity extends AppCompatActivity {
                 action.performAction();
                 showDone();
             }catch (IOException e) {
-                Utils.showErrorDialog(this, e, false);
+                DnbUtils.showErrorDialog(this, e, false);
             }
         }).start();
     }

@@ -17,7 +17,7 @@ import java.net.URLConnection;
 
 import git.artdeell.dnbootstrap.R;
 
-public class Utils {
+public class DnbUtils {
     public static <T> T getWeakReference(WeakReference<T> reference) {
         if(reference == null) return null;
         return reference.get();

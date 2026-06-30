@@ -1,25 +1,23 @@
 package git.artdeell.dnbootstrap;
 
-import android.view.Surface;
 import android.view.SurfaceHolder;
+
+import git.artdeell.dnbootstrap.glfw.GLFW;
 
 public class NativeSurfaceListener implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
-
+        GLFW.nativeSurfaceUpdated();
     }
 
     @Override
     public void surfaceCreated(SurfaceHolder surfaceHolder) {
-        nativeSurfaceCreated(surfaceHolder.getSurface());
+        GLFW.nativeSurfaceCreated(surfaceHolder.getSurface());
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
-        nativeSurfaceDestroyed();
+        GLFW.nativeSurfaceDestroyed();
     }
-
-    private static native void nativeSurfaceCreated(Surface surface);
-    private static native void nativeSurfaceDestroyed();
 }
