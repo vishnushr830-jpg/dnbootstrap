@@ -12,20 +12,6 @@ cmake_minimum_required(VERSION 3.22.1)
 project("dnbootstrap")
 
 ####################################################
-# GLFW
-####################################################
-set(GLFW_BUILD_EXAMPLES OFF CACHE STRING "" FORCE)
-set(GLFW_BUILD_TESTS    OFF CACHE STRING "" FORCE)
-set(GLFW_INSTALL        OFF CACHE STRING "" FORCE)
-set(BUILD_SHARED_LIBS   ON  CACHE STRING "" FORCE)
-set(GLFW_BUILD_X11      OFF CACHE STRING "" FORCE)
-set(GLFW_BUILD_WAYLAND  OFF CACHE STRING "" FORCE)
-set(GLFW_BUILD_ANDROID  ON  CACHE STRING "" FORCE)
-
-add_subdirectory(glfw34)
-include_directories(glfw34/include src/)
-
-####################################################
 # nethost
 ####################################################
 
@@ -57,6 +43,9 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         # List C/C++ source files with relative paths to this CMakeLists.txt.
         dnbootstrap.c)
 
+add_library(pojavexec SHARED
+        pojavexec_minispec.c)
+
 # Specifies libraries CMake should link to your target library. You
 # can link libraries from various origins, such as libraries defined in this
 # build script, prebuilt third-party libraries, or Android system libraries.
@@ -65,5 +54,4 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         dl
         android
         log
-        glfw
         nethost)

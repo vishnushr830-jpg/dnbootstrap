@@ -13,7 +13,7 @@ import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import git.artdeell.dnbootstrap.utils.Utils;
+import git.artdeell.dnbootstrap.utils.DnbUtils;
 import git.artdeell.dnbootstrap.io.IOUtil;
 import git.artdeell.dnbootstrap.io.ReadCountInputStream;
 
@@ -94,7 +94,7 @@ public class AssetsExtractor implements Runnable, ReadCountInputStream.Callback 
     }
 
     private void callProgressCallback() {
-        ProgressCallback callback = Utils.getWeakReference(this.callback);
+        ProgressCallback callback = DnbUtils.getWeakReference(this.callback);
         callback.onProgressChanged();
     }
 
