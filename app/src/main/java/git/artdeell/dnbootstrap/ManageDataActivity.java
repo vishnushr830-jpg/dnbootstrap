@@ -2,13 +2,17 @@ package git.artdeell.dnbootstrap;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.apache.commons.io.FileUtils;
+import java.util.Locale;
 
 import java.io.IOException;
 
@@ -27,9 +31,34 @@ public class ManageDataActivity extends AppCompatActivity {
         findViewById(R.id.manage_space_open_data_directory).setOnClickListener(v->{
             DnbUtils.openPath(this, getFilesDir(), false);
         });
+
+        SharedPreferences prefs = getSharedPreferences(git.artdeell.dnbootstrap.input.ControlLayout.PREFS_NAME, Context.MODE_PRIVATE);
+        float sensitivity = prefs.getFloat(git.artdeell.dnbootstrap.input.ControlLayout.KEY_SENSITIVITY, git.artdeell.dnbootstrap.input.ControlLayout.DEFAULT_SENSITIVITY);
+        SeekBar sensitivitySeekBar = findViewById(R.id.seekbar_sensitivity);
+        TextView sensitivityValueLabel = findViewById(R.id.label_sensitivity_value);
+        sensitivitySeekBar.setProgress(Math.round(sensitivity * 100f));
+        updateSensitivityLabel(sensitivityValueLabel, sensitivity);
+        sensitivitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                float newSensitivity = Math.max(0.01f, progress / 100f);
+                prefs.edit().putFloat(git.artdeell.dnbootstrap.input.ControlLayout.KEY_SENSITIVITY, newSensitivity).apply();
+                updateSensitivityLabel(sensitivityValueLabel, newSensitivity);
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+            }
+        });
     }
 
-
+    private void updateSensitivityLabel(TextView label, float sensitivity) {
+        label.setText(String.format(Locale.ENGLISH, "%.2fx", sensitivity));
+    }
 
     private void performAction(UninstallAction action) {
         new Thread(()->{
